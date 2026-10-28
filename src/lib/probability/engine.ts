@@ -133,7 +133,8 @@ export class ProbabilityEngine {
     id: string,
     difficulty: Difficulty,
     rng: SeededRandom,
-    spawnTimeMs: number
+    spawnTimeMs: number,
+    laneIndex: number = 0
   ): PacketDefinition {
     // Difficulty profiles
     const config = {
@@ -215,6 +216,7 @@ export class ProbabilityEngine {
       riskRating,
       valuePerSecond,
       spawnTimeMs,
+      laneIndex,
     };
   }
 

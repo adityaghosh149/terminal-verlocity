@@ -18,6 +18,7 @@ export interface PacketDefinition {
   riskRating: "low" | "medium" | "high" | "critical";
   valuePerSecond: number;    // EV / estimated typing duration
   spawnTimeMs: number;
+  laneIndex: number;         // 0 to 3 horizontal column
 }
 
 export interface PacketEvent {

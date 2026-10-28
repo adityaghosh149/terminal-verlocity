@@ -4,7 +4,8 @@ import { useState } from "react";
 import { PhaserGame } from "@/components/game/PhaserGame";
 import { useGameStore } from "@/store/useGameStore";
 import { Difficulty, GameMode, HudMode } from "@/types";
-import { Terminal, Shield, Zap, Flame, Award, Sliders } from "lucide-react";
+import { Terminal, Shield, Zap, Flame, Award, Sliders, HelpCircle, Info } from "lucide-react";
+import { HowToPlayModal } from "@/components/game/HowToPlayModal";
 
 export default function GamePage() {
   const {
@@ -17,21 +18,15 @@ export default function GamePage() {
   } = useGameStore();
 
   const difficulties: { id: Difficulty; label: string; desc: string }[] = [
-    { id: "easy", label: "EASY", desc: "Slower drop speed, 4-letter words, generous firewall" },
-    { id: "medium", label: "MEDIUM", desc: "Standard speed, 6-letter cipher hashes, balanced EV" },
-    { id: "hard", label: "HARD", desc: "Rapid fall velocity, 9+ byte strings, demanding risk" },
+    { id: "easy", label: "EASY", desc: "4-letter words, slower velocity, generous firewall" },
+    { id: "medium", label: "MEDIUM", desc: "6-letter ciphers, balanced risk & reward" },
+    { id: "hard", label: "HARD", desc: "9+ character strings, rapid fall velocity, severe penalties" },
   ];
 
   const modes: { id: GameMode; label: string; desc: string }[] = [
-    { id: "classic", label: "CLASSIC", desc: "90-second timed sprint for highest validated score" },
+    { id: "classic", label: "CLASSIC (90s)", desc: "90-second timed sprint for highest validated score" },
     { id: "endless", label: "ENDLESS", desc: "Survival mode: withstand continuous streams until 3 shields drop" },
     { id: "daily", label: "DAILY CHALLENGE", desc: "Deterministic seed: identical packet sequence for all players globally" },
-  ];
-
-  const hudModes: { id: HudMode; label: string }[] = [
-    { id: "minimal", label: "Minimal (Reward & Risk)" },
-    { id: "standard", label: "Standard (+ Badges)" },
-    { id: "analytical", label: "Analytical (+ EV & VPS)" },
   ];
 
   return (
@@ -49,7 +44,7 @@ export default function GamePage() {
               <button
                 key={m.id}
                 onClick={() => setMode(m.id)}
-                className={`px-3 py-1 rounded-md text-xs font-mono font-bold transition-all ${
+                className={`px-3 py-1 rounded-md text-xs font-display font-bold transition-all ${
                   mode === m.id
                     ? "bg-primary text-primary-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground"
@@ -73,7 +68,7 @@ export default function GamePage() {
               <button
                 key={d.id}
                 onClick={() => setDifficulty(d.id)}
-                className={`px-3 py-1 rounded-md text-xs font-mono font-bold transition-all ${
+                className={`px-3 py-1 rounded-md text-xs font-display font-bold transition-all ${
                   difficulty === d.id
                     ? "bg-primary text-primary-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground"
@@ -86,23 +81,9 @@ export default function GamePage() {
           </div>
         </div>
 
-        {/* HUD Mode */}
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-mono text-muted-foreground uppercase flex items-center gap-1.5">
-            <Sliders className="h-3.5 w-3.5 text-primary" />
-            HUD:
-          </span>
-          <select
-            value={hudMode}
-            onChange={(e) => setHudMode(e.target.value as HudMode)}
-            className="text-xs bg-secondary/80 border border-border text-foreground rounded-md px-2 py-1 cursor-pointer font-mono focus:outline-none focus:ring-1 focus:ring-primary"
-          >
-            {hudModes.map((h) => (
-              <option key={h.id} value={h.id}>
-                {h.label}
-              </option>
-            ))}
-          </select>
+        {/* How to Play Guide Modal Button */}
+        <div className="flex items-center gap-3">
+          <HowToPlayModal />
         </div>
       </div>
 
@@ -112,6 +93,16 @@ export default function GamePage() {
         mode={mode}
         difficulty={difficulty}
       />
+
+      {/* Strategic Rule Box Under Arcade */}
+      <div className="w-full max-w-5xl mt-6 p-4 rounded-xl border border-border/60 bg-secondary/20 flex items-center justify-between gap-4 text-xs font-mono text-muted-foreground">
+        <div className="flex items-center gap-2">
+          <Info className="h-4 w-4 text-primary shrink-0" />
+          <span>
+            <strong className="text-foreground">TACTICAL DIRECTIVE:</strong> Packets with negative EV are traps. Prioritize high-reward low-risk payloads (+EV) to build your combo multiplier without breaking shields.
+          </span>
+        </div>
+      </div>
     </div>
   );
 }

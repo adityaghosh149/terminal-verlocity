@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,400;0,600;0,700;1,700&family=JetBrains+Mono:wght@400;500;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -5,91 +7,91 @@
 @layer base {
   :root,
   [data-theme="midnight"] {
-    --background: 222 47% 6%;
+    --background: 224 45% 4%;
     --foreground: 210 40% 98%;
-    --card: 222 47% 9%;
+    --card: 222 47% 7%;
     --card-foreground: 210 40% 98%;
-    --popover: 222 47% 9%;
+    --popover: 222 47% 8%;
     --popover-foreground: 210 40% 98%;
     --primary: 187 100% 50%;
-    --primary-foreground: 222 47% 6%;
-    --secondary: 217 33% 17%;
+    --primary-foreground: 222 47% 4%;
+    --secondary: 217 33% 13%;
     --secondary-foreground: 210 40% 98%;
-    --muted: 217 33% 14%;
-    --muted-foreground: 215 20% 65%;
+    --muted: 217 33% 11%;
+    --muted-foreground: 215 20% 60%;
     --accent: 199 89% 48%;
-    --accent-foreground: 222 47% 6%;
+    --accent-foreground: 222 47% 4%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 210 40% 98%;
-    --border: 217 33% 20%;
-    --input: 217 33% 18%;
+    --border: 217 33% 16%;
+    --input: 217 33% 14%;
     --ring: 187 100% 50%;
-    --radius: 0.5rem;
+    --radius: 0.375rem;
   }
 
   [data-theme="cyberpunk"] {
-    --background: 275 60% 5%;
+    --background: 280 65% 4%;
     --foreground: 280 40% 98%;
-    --card: 275 55% 10%;
+    --card: 280 50% 8%;
     --card-foreground: 280 40% 98%;
-    --popover: 275 55% 10%;
+    --popover: 280 50% 8%;
     --popover-foreground: 280 40% 98%;
-    --primary: 326 100% 50%;
-    --primary-foreground: 275 60% 5%;
-    --secondary: 272 40% 20%;
+    --primary: 326 100% 54%;
+    --primary-foreground: 280 65% 4%;
+    --secondary: 280 35% 15%;
     --secondary-foreground: 280 40% 98%;
-    --muted: 272 35% 15%;
-    --muted-foreground: 275 25% 65%;
+    --muted: 280 35% 12%;
+    --muted-foreground: 280 20% 65%;
     --accent: 265 89% 68%;
-    --accent-foreground: 275 60% 5%;
+    --accent-foreground: 280 65% 4%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 280 40% 98%;
-    --border: 275 40% 25%;
-    --input: 275 40% 22%;
-    --ring: 326 100% 50%;
+    --border: 280 35% 20%;
+    --input: 280 35% 18%;
+    --ring: 326 100% 54%;
   }
 
   [data-theme="terminal"] {
-    --background: 120 50% 3%;
+    --background: 140 60% 2%;
     --foreground: 140 100% 70%;
-    --card: 120 40% 6%;
+    --card: 140 45% 5%;
     --card-foreground: 140 100% 70%;
-    --popover: 120 40% 6%;
+    --popover: 140 45% 5%;
     --popover-foreground: 140 100% 70%;
     --primary: 142 100% 50%;
-    --primary-foreground: 120 50% 3%;
-    --secondary: 120 30% 12%;
+    --primary-foreground: 140 60% 2%;
+    --secondary: 140 30% 10%;
     --secondary-foreground: 140 100% 70%;
-    --muted: 120 30% 10%;
+    --muted: 140 30% 8%;
     --muted-foreground: 140 40% 45%;
     --accent: 142 80% 45%;
-    --accent-foreground: 120 50% 3%;
+    --accent-foreground: 140 60% 2%;
     --destructive: 0 80% 55%;
     --destructive-foreground: 140 100% 70%;
-    --border: 120 35% 16%;
-    --input: 120 35% 14%;
+    --border: 140 35% 14%;
+    --input: 140 35% 12%;
     --ring: 142 100% 50%;
   }
 
   [data-theme="amber"] {
-    --background: 35 30% 5%;
+    --background: 35 35% 4%;
     --foreground: 45 100% 90%;
-    --card: 35 25% 9%;
+    --card: 35 25% 7%;
     --card-foreground: 45 100% 90%;
-    --popover: 35 25% 9%;
+    --popover: 35 25% 7%;
     --popover-foreground: 45 100% 90%;
     --primary: 43 100% 50%;
-    --primary-foreground: 35 30% 5%;
-    --secondary: 35 20% 16%;
+    --primary-foreground: 35 35% 4%;
+    --secondary: 35 20% 13%;
     --secondary-foreground: 45 100% 90%;
-    --muted: 35 20% 13%;
+    --muted: 35 20% 10%;
     --muted-foreground: 40 20% 60%;
     --accent: 35 90% 48%;
-    --accent-foreground: 35 30% 5%;
+    --accent-foreground: 35 35% 4%;
     --destructive: 0 80% 55%;
     --destructive-foreground: 45 100% 90%;
-    --border: 35 25% 20%;
-    --input: 35 25% 18%;
+    --border: 35 25% 17%;
+    --input: 35 25% 15%;
     --ring: 43 100% 50%;
   }
 
@@ -117,40 +119,83 @@
 }
 
 body {
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   color: hsl(var(--foreground));
   background: hsl(var(--background));
-  font-feature-settings: "rlig" 1, "calt" 1;
   overflow-x: hidden;
+  letter-spacing: -0.01em;
 }
 
-/* Cyberpunk terminal grid background */
+/* Typography Classes */
+.font-display {
+  font-family: 'Chakra Petch', sans-serif;
+  letter-spacing: 0.04em;
+}
+
+.font-mono {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Tactical Cyberpunk Terminal Grid Background */
 .terminal-grid {
   background-image: 
-    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-  background-size: 32px 32px;
+    radial-gradient(circle at 50% 0%, rgba(0, 240, 255, 0.05) 0%, transparent 60%),
+    linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 100% 100%, 24px 24px, 24px 24px;
 }
 
-/* CRT monitor scanlines overlay */
+/* High-tech CRT scanlines overlay */
 .scanlines {
   background: linear-gradient(
     rgba(18, 16, 16, 0) 50%, 
-    rgba(0, 0, 0, 0.25) 50%
+    rgba(0, 0, 0, 0.3) 50%
   ), linear-gradient(
     90deg,
-    rgba(255, 0, 0, 0.03),
+    rgba(255, 0, 0, 0.02),
     rgba(0, 255, 0, 0.01),
-    rgba(0, 0, 255, 0.03)
+    rgba(0, 0, 255, 0.02)
   );
   background-size: 100% 3px, 3px 100%;
   pointer-events: none;
 }
 
-/* Glow utility classes */
+/* Tactical chamfer cuts */
+.chamfer-card {
+  clip-path: polygon(
+    0 8px,
+    8px 0,
+    calc(100% - 8px) 0,
+    100% 8px,
+    100% calc(100% - 8px),
+    calc(100% - 8px) 100%,
+    8px 100%,
+    0 calc(100% - 8px)
+  );
+}
+
+.chamfer-tag {
+  clip-path: polygon(
+    0 4px,
+    4px 0,
+    calc(100% - 4px) 0,
+    100% 4px,
+    100% calc(100% - 4px),
+    calc(100% - 4px) 100%,
+    4px 100%,
+    0 calc(100% - 4px)
+  );
+}
+
+/* Glowing effects */
 .glow-primary {
-  box-shadow: 0 0 20px -3px hsl(var(--primary) / 0.5);
+  box-shadow: 0 0 25px -4px hsl(var(--primary) / 0.45);
 }
 
 .glow-text {
-  text-shadow: 0 0 10px currentColor;
+  text-shadow: 0 0 12px currentColor;
+}
+
+.glow-danger {
+  box-shadow: 0 0 20px -3px rgba(244, 63, 94, 0.4);
 }

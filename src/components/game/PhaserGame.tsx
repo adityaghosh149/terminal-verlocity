@@ -13,18 +13,26 @@ import {
   BarChart2,
   AlertTriangle,
   Sparkles,
+  HelpCircle,
+  Skull,
+  TrendingUp,
+  AlertOctagon,
 } from "lucide-react";
 import { useGameStore } from "@/store/useGameStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { ProbabilityEngine, SeededRandom } from "@/lib/probability/engine";
 import { soundEngine } from "@/lib/audio/soundEngine";
 import { PacketDefinition, PacketEvent, GameRunResult } from "@/types";
+import { HowToPlayModal } from "./HowToPlayModal";
 
 interface PhaserGameProps {
   mode: "classic" | "endless" | "daily";
   difficulty: "easy" | "medium" | "hard";
   onGameOver?: (result: GameRunResult) => void;
 }
+
+// 4 distinct horizontal column lanes (percentages from left edge)
+const LANES = [14, 38, 62, 86];
 
 export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
   const router = useRouter();
@@ -60,6 +68,7 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
     keystrokesTotal: number;
     keystrokesCorrect: number;
     packetCounter: number;
+    lastSpawnTime: number;
   }>({
     runId: "",
     runToken: "",
@@ -70,10 +79,30 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
     keystrokesTotal: 0,
     keystrokesCorrect: 0,
     packetCounter: 0,
+    lastSpawnTime: 0,
   });
 
   // Mobile virtual keyboard input
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Spawn helper: picks the lane with fewest active packets
+  const getOptimalLane = useCallback((packets: PacketDefinition[]): number => {
+    const laneCounts = [0, 0, 0, 0];
+    for (const pkt of packets) {
+      if (pkt.laneIndex >= 0 && pkt.laneIndex < 4) {
+        laneCounts[pkt.laneIndex]++;
+      }
+    }
+    let minLane = 0;
+    let minCount = laneCounts[0];
+    for (let i = 1; i < 4; i++) {
+      if (laneCounts[i] < minCount) {
+        minCount = laneCounts[i];
+        minLane = i;
+      }
+    }
+    return minLane;
+  }, []);
 
   // Initialize Game Run Session with Server
   const initializeRun = useCallback(async () => {
@@ -86,16 +115,36 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
 
+      const rng = new SeededRandom(data.seed);
+      const now = Date.now();
+
+      // Immediately generate an initial wave of 3 packets across lanes 0, 1, 2
+      const initialPackets: PacketDefinition[] = [];
+      const waveCount = difficulty === "easy" ? 2 : difficulty === "medium" ? 3 : 4;
+      for (let i = 0; i < waveCount; i++) {
+        const pkt = ProbabilityEngine.generatePacket(
+          `pkt_${i + 1}`,
+          difficulty,
+          rng,
+          now - i * 400,
+          i % 4
+        );
+        // Stagger initial progress slightly for natural flow
+        pkt.durationSeconds -= i * 0.8;
+        initialPackets.push(pkt);
+      }
+
       runDataRef.current = {
         runId: data.runId,
         runToken: data.runToken,
         seed: data.seed,
-        startTime: data.startTime,
-        rng: new SeededRandom(data.seed),
+        startTime: now,
+        rng,
         events: [],
         keystrokesTotal: 0,
         keystrokesCorrect: 0,
-        packetCounter: 0,
+        packetCounter: waveCount,
+        lastSpawnTime: now,
       };
 
       setScore(0);
@@ -105,7 +154,7 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
       setTimeRemaining(mode === "classic" ? 90 : 0);
       setElapsedSeconds(0);
       setCurrentInput("");
-      setActivePackets([]);
+      setActivePackets(initialPackets);
       setActiveTargetId(null);
       setGameStatus("playing");
 
@@ -195,67 +244,71 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
     [difficulty, mode, onGameOver, setLastRunResult]
   );
 
-  // Main Game Loop Timer & Packet Descent (60 FPS tick)
-  useEffect(() => {
-    if (gameStatus !== "playing") return;
-
-    let lastSpawn = Date.now();
-    const spawnInterval = difficulty === "easy" ? 2800 : difficulty === "medium" ? 2200 : 1600;
-
-    const gameInterval = setInterval(() => {
-      const now = Date.now();
-
-      // Countdown in classic mode
-      if (mode === "classic") {
-        setTimeRemaining((prev) => {
-          if (prev <= 1) {
-            clearInterval(gameInterval);
-            handleGameOver(score, maxCombo);
-            return 0;
-          }
-          return prev - 1;
-        });
-      } else {
-        setElapsedSeconds((prev) => prev + 1);
-      }
-
-      // Spawn packets periodically
-      if (now - lastSpawn > spawnInterval && activePackets.length < 6) {
-        lastSpawn = now;
-        runDataRef.current.packetCounter += 1;
-        const newPacket = ProbabilityEngine.generatePacket(
-          `pkt_${runDataRef.current.packetCounter}`,
-          difficulty,
-          runDataRef.current.rng,
-          now
-        );
-        setActivePackets((prev) => [...prev, newPacket]);
-      }
-    }, 1000);
-
-    return () => clearInterval(gameInterval);
-  }, [activePackets.length, difficulty, gameStatus, handleGameOver, maxCombo, mode, score]);
-
-  // High-frequency animation frame loop for smooth packet descent
+  // High-Frequency 60 FPS RequestAnimationFrame Loop
   useEffect(() => {
     if (gameStatus !== "playing") return;
 
     let animId: number;
     let lastTime = performance.now();
+    let oneSecAccumulator = 0;
 
-    const updateFrame = (currentTime: number) => {
+    // Target concurrency and spawn cooldowns
+    const targetCount = difficulty === "easy" ? 3 : difficulty === "medium" ? 4 : 5;
+    const minSpawnDelay = difficulty === "easy" ? 1400 : difficulty === "medium" ? 950 : 650;
+
+    const loop = (currentTime: number) => {
       const dt = (currentTime - lastTime) / 1000;
       lastTime = currentTime;
 
-      setActivePackets((prev) => {
-        const next: PacketDefinition[] = [];
-        let hitBottomOccurred = false;
+      // 1. Update Game Timers
+      oneSecAccumulator += dt;
+      if (oneSecAccumulator >= 1) {
+        oneSecAccumulator -= 1;
+        if (mode === "classic") {
+          setTimeRemaining((prev) => {
+            if (prev <= 1) {
+              handleGameOver(score, maxCombo);
+              return 0;
+            }
+            return prev - 1;
+          });
+        } else {
+          setElapsedSeconds((prev) => prev + 1);
+        }
+      }
 
-        for (const pkt of prev) {
-          const newDuration = pkt.durationSeconds - dt;
-          if (newDuration <= 0) {
-            // Packet escaped!
-            hitBottomOccurred = true;
+      // 2. High-speed smooth spawning
+      const now = Date.now();
+      setActivePackets((prev) => {
+        let current = [...prev];
+
+        // Check if we need to spawn a new packet
+        if (
+          current.length < targetCount &&
+          now - runDataRef.current.lastSpawnTime >= minSpawnDelay
+        ) {
+          runDataRef.current.lastSpawnTime = now;
+          runDataRef.current.packetCounter += 1;
+          const lane = getOptimalLane(current);
+          const newPkt = ProbabilityEngine.generatePacket(
+            `pkt_${runDataRef.current.packetCounter}`,
+            difficulty,
+            runDataRef.current.rng,
+            now,
+            lane
+          );
+          current.push(newPkt);
+        }
+
+        // 3. Move packets downwards with exact dt
+        const next: PacketDefinition[] = [];
+        let escapedCount = 0;
+
+        for (const pkt of current) {
+          const newDur = pkt.durationSeconds - dt;
+          if (newDur <= 0) {
+            // Packet reached bottom threshold!
+            escapedCount++;
             soundEngine.playMissedPacket();
 
             runDataRef.current.events.push({
@@ -273,30 +326,30 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
               accuracy: 0,
             });
           } else {
-            next.push({ ...pkt, durationSeconds: newDuration });
+            next.push({ ...pkt, durationSeconds: newDur });
           }
         }
 
-        if (hitBottomOccurred) {
+        if (escapedCount > 0) {
           setCombo(0);
           setLives((l) => {
-            const nextLives = l - 1;
-            if (nextLives <= 0) {
+            const nextL = l - escapedCount;
+            if (nextL <= 0) {
               handleGameOver(score, maxCombo);
             }
-            return Math.max(0, nextLives);
+            return Math.max(0, nextL);
           });
         }
 
         return next;
       });
 
-      animId = requestAnimationFrame(updateFrame);
+      animId = requestAnimationFrame(loop);
     };
 
-    animId = requestAnimationFrame(updateFrame);
+    animId = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(animId);
-  }, [gameStatus, handleGameOver, maxCombo, score]);
+  }, [difficulty, gameStatus, getOptimalLane, handleGameOver, maxCombo, mode, score]);
 
   // Handle Keystrokes & Typing Interception
   const processKey = useCallback(
@@ -311,9 +364,13 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
       let target = activePackets.find((p) => p.id === activeTargetId);
 
       if (!target) {
-        // Find packet starting with this character
-        target = activePackets.find((p) => p.code.startsWith(upperChar));
-        if (target) {
+        // Find packet starting with this character (prioritize packet lowest on screen / least duration remaining)
+        const candidates = activePackets
+          .filter((p) => p.code.startsWith(upperChar))
+          .sort((a, b) => a.durationSeconds - b.durationSeconds);
+
+        if (candidates.length > 0) {
+          target = candidates[0];
           setActiveTargetId(target.id);
           setCurrentInput(upperChar);
           runDataRef.current.keystrokesCorrect += 1;
@@ -376,8 +433,8 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
             outcome,
             timestampMs: Date.now() - runDataRef.current.startTime,
             pointsDelta,
-            wpm: 60,
-            accuracy: 95,
+            wpm: 65,
+            accuracy: 96,
           });
 
           // Remove packet from active list
@@ -418,47 +475,47 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
   return (
     <div
       ref={containerRef}
-      className="relative w-full max-w-5xl mx-auto h-[680px] rounded-xl border border-border/80 bg-card/90 overflow-hidden shadow-2xl flex flex-col font-mono select-none"
+      className="relative w-full max-w-5xl mx-auto h-[690px] rounded-xl border border-primary/30 bg-card/95 overflow-hidden shadow-2xl flex flex-col font-sans select-none"
     >
       {/* CRT Scanline Overlay */}
       <div className="absolute inset-0 scanlines z-30 pointer-events-none" />
 
       {/* Top HUD Telemetry Bar */}
-      <div className="flex items-center justify-between px-6 py-3 border-b border-border/60 bg-secondary/40 backdrop-blur-sm z-20">
+      <div className="flex items-center justify-between px-6 py-3.5 border-b border-border/80 bg-secondary/50 backdrop-blur-md z-20">
         <div className="flex items-center gap-6">
           {/* Score */}
           <div>
-            <div className="text-[10px] text-muted-foreground tracking-wider uppercase">
-              SCORE
+            <div className="text-[10px] font-mono tracking-widest text-muted-foreground uppercase">
+              CURRENT SCORE
             </div>
-            <div className="text-2xl font-black text-primary glow-text">
+            <div className="text-3xl font-black font-display tracking-tight text-primary glow-text">
               {score.toLocaleString()}
             </div>
           </div>
 
           {/* Combo Multiplier */}
           <div className="hidden sm:block">
-            <div className="text-[10px] text-muted-foreground tracking-wider uppercase">
-              COMBO
+            <div className="text-[10px] font-mono tracking-widest text-muted-foreground uppercase">
+              STREAK COMBO
             </div>
-            <div className="text-xl font-bold text-amber-400 flex items-center gap-1">
-              <Flame className="h-4 w-4" />
-              {combo}x
+            <div className="text-2xl font-black font-display text-amber-400 flex items-center gap-1">
+              <Flame className="h-5 w-5" />
+              {(1 + Math.min(2.0, combo * 0.1)).toFixed(1)}x
             </div>
           </div>
 
           {/* Shields / Health */}
           <div>
-            <div className="text-[10px] text-muted-foreground tracking-wider uppercase">
+            <div className="text-[10px] font-mono tracking-widest text-muted-foreground uppercase">
               FIREWALL INTEGRITY
             </div>
-            <div className="flex items-center gap-1.5 mt-0.5">
+            <div className="flex items-center gap-1.5 mt-1">
               {[1, 2, 3].map((idx) => (
                 <Shield
                   key={idx}
                   className={`h-5 w-5 transition-all ${
                     idx <= lives
-                      ? "text-primary fill-primary/30"
+                      ? "text-primary fill-primary/30 drop-shadow-[0_0_8px_currentColor]"
                       : "text-muted-foreground/30 fill-transparent"
                   }`}
                 />
@@ -467,23 +524,18 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
           </div>
         </div>
 
-        {/* Center: Mode & Difficulty */}
-        <div className="hidden md:flex flex-col items-center">
-          <div className="text-[10px] font-bold tracking-widest text-primary uppercase">
-            {mode.toUpperCase()} RUN // {difficulty.toUpperCase()}
-          </div>
-          <div className="text-xs text-muted-foreground">
-            HUD MODE: {hudMode.toUpperCase()}
-          </div>
+        {/* Center: Rules Modal & HUD Mode */}
+        <div className="hidden md:flex items-center gap-3">
+          <HowToPlayModal />
         </div>
 
         {/* Right side: Timer & Sound toggle */}
         <div className="flex items-center gap-4">
           <div>
-            <div className="text-[10px] text-muted-foreground tracking-wider uppercase text-right">
+            <div className="text-[10px] font-mono tracking-widest text-muted-foreground uppercase text-right">
               {mode === "classic" ? "TIME REMAINING" : "SURVIVAL TIME"}
             </div>
-            <div className="text-2xl font-black text-foreground flex items-center justify-end gap-1.5">
+            <div className="text-2xl font-black font-display text-foreground flex items-center justify-end gap-1.5">
               <Clock className="h-5 w-5 text-primary" />
               {mode === "classic"
                 ? `${timeRemaining}s`
@@ -507,102 +559,115 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
         </div>
       </div>
 
-      {/* Main Arcade Canvas Playfield */}
-      <div className="relative flex-1 bg-black/60 overflow-hidden">
-        {/* Grid lines */}
-        <div className="absolute inset-0 terminal-grid opacity-40 pointer-events-none" />
+      {/* Main Arcade Canvas Playfield (4 Lanes) */}
+      <div className="relative flex-1 bg-black/75 overflow-hidden">
+        {/* Subtle grid lines & 4 lane guides */}
+        <div className="absolute inset-0 terminal-grid opacity-35 pointer-events-none" />
+        <div className="absolute inset-0 flex justify-between px-12 pointer-events-none opacity-15">
+          <div className="w-[1px] h-full bg-border border-dashed border-l" />
+          <div className="w-[1px] h-full bg-border border-dashed border-l" />
+          <div className="w-[1px] h-full bg-border border-dashed border-l" />
+          <div className="w-[1px] h-full bg-border border-dashed border-l" />
+        </div>
 
-        {/* Bottom Escape Firewall Warning Line */}
-        <div className="absolute bottom-6 left-0 right-0 h-1 bg-rose-500/40 border-t border-rose-500/80 z-10 flex items-center justify-center">
-          <span className="text-[9px] font-mono tracking-widest text-rose-400 bg-black/90 px-3 py-0.5 rounded border border-rose-500/40 uppercase">
-            [ BOTTOM FIREWALL - DECAY THRESHOLD ]
+        {/* Bottom Escape Firewall Line */}
+        <div className="absolute bottom-6 left-0 right-0 h-1 bg-rose-500/50 border-t border-rose-500 z-10 flex items-center justify-center">
+          <span className="text-[9px] font-mono tracking-widest text-rose-400 bg-black/90 px-3 py-0.5 rounded border border-rose-500/50 uppercase font-bold">
+            [ BOTTOM FIREWALL THRESHOLD ]
           </span>
         </div>
 
-        {/* Game Ready / Launcher Overlay */}
+        {/* Ready / Start Overlay */}
         {gameStatus === "ready" && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/85 backdrop-blur-md z-40 p-6 text-center">
-            <Zap className="h-16 w-16 text-primary animate-pulse mb-4" />
-            <h2 className="text-3xl font-black text-foreground tracking-wider">
-              DATA STREAM READY
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/90 backdrop-blur-md z-40 p-6 text-center animate-in fade-in">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 border border-primary/30 mb-4 glow-primary">
+              <Zap className="h-8 w-8 text-primary" />
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-black font-display tracking-tight text-foreground">
+              DATA STREAM ONLINE
             </h2>
-            <p className="mt-2 text-sm text-muted-foreground max-w-md">
-              Mode: <span className="text-foreground font-bold">{mode.toUpperCase()}</span> | Difficulty:{" "}
-              <span className="text-foreground font-bold">{difficulty.toUpperCase()}</span>
+            <p className="mt-2 text-xs font-mono text-muted-foreground uppercase tracking-widest">
+              MODE: <span className="text-primary font-bold">{mode}</span> // DIFFICULTY:{" "}
+              <span className="text-amber-400 font-bold">{difficulty}</span>
             </p>
-            <p className="mt-1 text-xs text-muted-foreground max-w-md">
-              Type falling packet codes to intercept clean payloads. Beware of high corruption probabilities!
+            <p className="mt-3 text-xs text-muted-foreground max-w-md mx-auto leading-relaxed">
+              Packets descend across 4 telemetry lanes. Type the first letter to acquire target lock. Clean payloads grant score & streak multipliers; corrupted payloads incur severe penalties!
             </p>
 
-            <button
-              onClick={initializeRun}
-              className="mt-8 bg-primary text-primary-foreground font-black px-8 py-3 rounded-lg text-base hover:opacity-90 transition-all glow-primary font-mono tracking-widest"
-            >
-              INITIALIZE RUN [ENTER]
-            </button>
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+              <button
+                onClick={initializeRun}
+                className="bg-primary text-primary-foreground font-display font-black px-8 py-3.5 rounded-lg text-sm hover:opacity-90 transition-all glow-primary tracking-widest"
+              >
+                INITIALIZE INTERCEPTION [SPACE]
+              </button>
+              <HowToPlayModal />
+            </div>
           </div>
         )}
 
         {/* Game Over Overlay */}
         {gameStatus === "gameover" && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/90 backdrop-blur-md z-40 p-6 text-center">
-            <AlertTriangle className="h-14 w-14 text-rose-500 mb-3 animate-bounce" />
-            <h2 className="text-3xl font-black text-rose-500 tracking-wider">
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/90 backdrop-blur-md z-40 p-6 text-center animate-in zoom-in-95 duration-200">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-destructive/10 border border-destructive/30 mb-3 glow-danger">
+              <AlertTriangle className="h-8 w-8 text-rose-500 animate-bounce" />
+            </div>
+            <h2 className="text-3xl font-black font-display tracking-tight text-rose-500">
               TERMINAL SHUTDOWN
             </h2>
-            <div className="mt-4 p-4 rounded-xl bg-secondary/40 border border-border/80 max-w-sm w-full">
-              <div className="text-xs text-muted-foreground">FINAL SCORE</div>
+            <p className="text-xs font-mono text-muted-foreground mt-1">
+              Firewall depleted or operational timeline concluded
+            </p>
+
+            <div className="mt-5 p-5 rounded-xl bg-card border border-border/80 max-w-sm w-full font-mono">
+              <div className="text-[11px] text-muted-foreground uppercase">FINAL VALIDATED SCORE</div>
               <div className="text-4xl font-black text-primary glow-text mt-1">
-                {score.toLocaleString()}
+                {score.toLocaleString()} PTS
               </div>
-              <div className="grid grid-cols-2 gap-2 mt-4 text-xs font-mono text-muted-foreground">
-                <div className="p-2 rounded bg-card/60">
-                  MAX COMBO: <span className="text-foreground font-bold">{maxCombo}x</span>
+              <div className="grid grid-cols-2 gap-2 mt-4 text-xs text-muted-foreground">
+                <div className="p-2.5 rounded bg-secondary/50 border border-border/40">
+                  MAX COMBO: <span className="text-amber-400 font-bold">{maxCombo}x</span>
                 </div>
-                <div className="p-2 rounded bg-card/60">
-                  PACKETS: <span className="text-foreground font-bold">{runDataRef.current.events.length}</span>
+                <div className="p-2.5 rounded bg-secondary/50 border border-border/40">
+                  CAPTURED: <span className="text-foreground font-bold">{runDataRef.current.events.filter(e => e.action === "intercepted").length}</span>
                 </div>
               </div>
             </div>
 
-            <div className="mt-6 flex items-center gap-4">
+            <div className="mt-6 flex items-center gap-3">
               <button
                 onClick={initializeRun}
-                className="flex items-center gap-2 bg-primary text-primary-foreground font-bold px-6 py-2.5 rounded-lg text-sm hover:opacity-90 transition-all glow-primary font-mono"
+                className="flex items-center gap-2 bg-primary text-primary-foreground font-display font-bold px-6 py-2.5 rounded-lg text-xs hover:opacity-90 transition-all glow-primary"
               >
                 <RotateCcw className="h-4 w-4" />
                 PLAY AGAIN
               </button>
               <button
                 onClick={() => router.push("/dashboard")}
-                className="flex items-center gap-2 bg-secondary hover:bg-secondary/80 text-foreground font-medium px-5 py-2.5 rounded-lg text-sm border border-border transition-all font-mono"
+                className="flex items-center gap-2 bg-secondary hover:bg-secondary/80 text-foreground font-display font-medium px-5 py-2.5 rounded-lg text-xs border border-border transition-all"
               >
                 <BarChart2 className="h-4 w-4 text-primary" />
-                DATA SCIENCE TELEMETRY
+                VIEW DATA SCIENCE ANALYTICS
               </button>
             </div>
           </div>
         )}
 
-        {/* Falling Packets */}
+        {/* 4 Multi-Lane Descending Packets */}
         {gameStatus === "playing" &&
           activePackets.map((pkt) => {
             const isTarget = activeTargetId === pkt.id;
-            // Calculate progress downwards: durationRemaining / originalDuration
             const totalDuration =
               difficulty === "easy" ? 11 : difficulty === "medium" ? 8.5 : 6.5;
             const progress = Math.max(0, Math.min(1, 1 - pkt.durationSeconds / totalDuration));
-            const topY = progress * 480 + 20; // 20px to 500px
+            const topY = progress * 460 + 15; // 15px to 475px
+
+            // Column lane horizontal coordinate
+            const lanePercent = LANES[pkt.laneIndex % 4];
 
             // Risk indicator colors
-            const riskBorder =
-              pkt.riskRating === "low"
-                ? "border-emerald-500/60 bg-emerald-950/20"
-                : pkt.riskRating === "medium"
-                ? "border-amber-500/60 bg-amber-950/20"
-                : pkt.riskRating === "high"
-                ? "border-orange-500/60 bg-orange-950/20"
-                : "border-rose-500/60 bg-rose-950/20";
+            const isPositiveEv = pkt.expectedValue > 0;
+            const isHighRisk = pkt.corruptionProbability >= 0.5;
 
             return (
               <div
@@ -611,29 +676,37 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
                   setActiveTargetId(pkt.id);
                   setCurrentInput("");
                 }}
-                style={{ top: `${topY}px`, left: "50%", transform: "translateX(-50%)" }}
-                className={`absolute w-80 rounded-lg border p-3 backdrop-blur-md cursor-pointer transition-all duration-75 shadow-lg ${riskBorder} ${
-                  isTarget ? "ring-2 ring-primary scale-105 z-20 glow-primary" : "opacity-90 z-10"
+                style={{
+                  top: `${topY}px`,
+                  left: `${lanePercent}%`,
+                  transform: "translateX(-50%)",
+                }}
+                className={`absolute w-52 sm:w-56 rounded-lg border p-2.5 backdrop-blur-md cursor-pointer transition-all duration-75 select-none ${
+                  isTarget
+                    ? "border-primary bg-primary/15 ring-2 ring-primary scale-105 z-20 glow-primary shadow-2xl"
+                    : isPositiveEv
+                    ? "border-emerald-500/40 bg-card/90 hover:border-emerald-400 z-10 shadow-lg"
+                    : "border-rose-500/40 bg-card/90 hover:border-rose-400 z-10 shadow-lg"
                 }`}
               >
-                {/* Header: Reward & Risk Probability */}
-                <div className="flex items-center justify-between text-xs mb-1">
+                {/* Header: Reward & Risk Tag */}
+                <div className="flex items-center justify-between text-[11px] mb-1 font-mono">
                   <span className="font-bold text-emerald-400">+{pkt.reward} PTS</span>
                   <span
-                    className={`font-mono text-[10px] px-1.5 py-0.5 rounded uppercase font-bold ${
-                      pkt.riskRating === "low"
-                        ? "bg-emerald-500/20 text-emerald-400"
-                        : pkt.riskRating === "medium"
-                        ? "bg-amber-500/20 text-amber-400"
-                        : "bg-rose-500/20 text-rose-400"
+                    className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                      pkt.corruptionProbability < 0.25
+                        ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                        : pkt.corruptionProbability < 0.5
+                        ? "bg-amber-500/20 text-amber-400 border border-amber-500/30"
+                        : "bg-rose-500/20 text-rose-400 border border-rose-500/30"
                     }`}
                   >
-                    Risk: {Math.round(pkt.corruptionProbability * 100)}%
+                    {Math.round(pkt.corruptionProbability * 100)}% RISK
                   </span>
                 </div>
 
-                {/* Packet Code to Type */}
-                <div className="text-center font-mono text-xl font-black tracking-widest my-1 py-1 rounded bg-black/50 border border-border/40">
+                {/* Packet String to Type */}
+                <div className="text-center font-mono text-lg font-black tracking-widest my-1 py-1 rounded bg-black/60 border border-border/40">
                   {isTarget ? (
                     <span>
                       <span className="text-primary glow-text font-black">
@@ -648,32 +721,34 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
                   )}
                 </div>
 
-                {/* Analytical HUD Level */}
-                {hudMode === "analytical" && (
-                  <div className="grid grid-cols-2 gap-1 text-[10px] font-mono mt-1 pt-1 border-t border-border/30 text-muted-foreground">
-                    <div>
-                      EV:{" "}
-                      <span
-                        className={`font-bold ${
-                          pkt.expectedValue >= 0 ? "text-emerald-400" : "text-rose-400"
-                        }`}
-                      >
-                        {pkt.expectedValue > 0 ? `+${pkt.expectedValue}` : pkt.expectedValue}
-                      </span>
-                    </div>
-                    <div className="text-right">
-                      VPS:{" "}
-                      <span className="text-primary font-bold">
-                        {pkt.valuePerSecond}/s
-                      </span>
-                    </div>
-                  </div>
-                )}
+                {/* EV Pill */}
+                <div className="flex items-center justify-between text-[10px] font-mono mt-1 pt-1 border-t border-border/40">
+                  <span
+                    className={`font-bold flex items-center gap-1 ${
+                      isPositiveEv ? "text-emerald-400" : "text-rose-400"
+                    }`}
+                  >
+                    {isPositiveEv ? (
+                      <>
+                        <TrendingUp className="h-3 w-3" />
+                        EV: +{pkt.expectedValue}
+                      </>
+                    ) : (
+                      <>
+                        <AlertOctagon className="h-3 w-3" />
+                        EV: {pkt.expectedValue} [TRAP]
+                      </>
+                    )}
+                  </span>
+                  <span className="text-muted-foreground">-{pkt.corruptionPenalty}p</span>
+                </div>
 
                 {/* Decay progress bar */}
-                <div className="w-full bg-secondary/60 h-1 rounded-full overflow-hidden mt-1.5">
+                <div className="w-full bg-secondary/80 h-1 rounded-full overflow-hidden mt-1.5">
                   <div
-                    className="h-full bg-primary transition-all duration-75"
+                    className={`h-full transition-all duration-75 ${
+                      isTarget ? "bg-primary" : isPositiveEv ? "bg-emerald-400" : "bg-rose-400"
+                    }`}
                     style={{ width: `${(pkt.durationSeconds / totalDuration) * 100}%` }}
                   />
                 </div>
@@ -682,23 +757,23 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
           })}
       </div>
 
-      {/* Bottom Mobile / Keyboard Assist Input Bar */}
-      <div className="px-6 py-2.5 border-t border-border/60 bg-secondary/30 flex items-center justify-between z-20">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-          <span>KEYBOARD INTERFACE:</span>
+      {/* Bottom Keyboard Telemetry & Assist Bar */}
+      <div className="px-6 py-2.5 border-t border-border/80 bg-secondary/40 flex items-center justify-between z-20 font-mono text-xs">
+        <div className="flex items-center gap-2">
+          <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+          <span className="text-muted-foreground">KEYBOARD INTERFACE:</span>
           {activeTargetId ? (
-            <span className="font-mono text-primary font-bold">
-              TARGET LOCKED: [{currentInput}_]
+            <span className="text-primary font-bold">
+              LOCKED ON [{currentInput}_] // TYPE NEXT CHAR
             </span>
           ) : (
-            <span className="font-mono text-muted-foreground">
-              READY // TYPE ANY PACKET FIRST CHARACTER
+            <span className="text-muted-foreground">
+              SCANNING // TYPE ANY PACKET FIRST LETTER TO LOCK TARGET
             </span>
           )}
         </div>
 
-        {/* Mobile touch hidden input so mobile keyboard appears */}
+        {/* Mobile touch hidden input */}
         <input
           ref={inputRef}
           type="text"
@@ -712,14 +787,16 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
           }}
         />
 
-        <button
-          onClick={() => {
-            if (inputRef.current) inputRef.current.focus();
-          }}
-          className="sm:hidden text-xs px-2.5 py-1 rounded bg-primary/20 text-primary border border-primary/40 font-mono"
-        >
-          OPEN KEYPAD
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => {
+              if (inputRef.current) inputRef.current.focus();
+            }}
+            className="sm:hidden text-xs px-2.5 py-1 rounded bg-primary/20 text-primary border border-primary/40 font-mono"
+          >
+            OPEN TOUCH KEYPAD
+          </button>
+        </div>
       </div>
     </div>
   );

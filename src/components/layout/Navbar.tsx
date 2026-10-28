@@ -42,31 +42,31 @@ export function Navbar() {
   const themes: { id: Theme; label: string }[] = [
     { id: "midnight", label: "Midnight" },
     { id: "cyberpunk", label: "Cyberpunk" },
-    { id: "terminal", label: "Terminal" },
-    { id: "amber", label: "Amber" },
-    { id: "light", label: "Light" },
+    { id: "terminal", label: "Terminal Green" },
+    { id: "amber", label: "Amber Protocol" },
+    { id: "light", label: "Light Mode" },
   ];
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-md">
+    <header className="sticky top-0 z-50 w-full border-b border-border/80 bg-background/85 backdrop-blur-md">
       <div className="container flex h-16 items-center justify-between px-4 sm:px-8">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2 group">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary border border-primary/30 group-hover:bg-primary group-hover:text-primary-foreground transition-all">
+        <Link href="/" className="flex items-center gap-2.5 group">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary border border-primary/30 group-hover:bg-primary group-hover:text-primary-foreground transition-all glow-primary">
             <Zap className="h-5 w-5" />
           </div>
           <div>
-            <span className="font-mono text-lg font-bold tracking-wider text-foreground group-hover:text-primary transition-colors">
+            <span className="font-display text-xl font-bold tracking-wider text-foreground group-hover:text-primary transition-colors">
               TERMINAL<span className="text-primary font-black">.VELOCITY</span>
             </span>
-            <div className="text-[10px] text-muted-foreground tracking-widest uppercase -mt-1 hidden sm:block">
-              Probability Arcade
+            <div className="text-[9px] font-mono text-muted-foreground tracking-widest uppercase -mt-1 hidden sm:block">
+              // PROBABILITY ARCADE INTERCEPTOR
             </div>
           </div>
         </Link>
 
         {/* Navigation items */}
-        <nav className="hidden md:flex items-center gap-1">
+        <nav className="hidden md:flex items-center gap-1.5 font-display text-sm tracking-wide">
           {navLinks.map((link) => {
             const Icon = link.icon;
             const isActive = pathname === link.href;
@@ -74,10 +74,10 @@ export function Navbar() {
               <Link
                 key={link.href}
                 href={link.href}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-md font-semibold transition-all ${
                   isActive
                     ? "bg-primary/15 text-primary border border-primary/30 shadow-sm"
-                    : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                    : "text-muted-foreground hover:text-foreground hover:bg-secondary/60"
                 }`}
               >
                 <Icon className="h-4 w-4" />
@@ -93,7 +93,7 @@ export function Navbar() {
           <select
             value={theme}
             onChange={(e) => setTheme(e.target.value as Theme)}
-            className="hidden sm:block text-xs bg-secondary/80 border border-border text-foreground rounded-md px-2 py-1 cursor-pointer hover:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary font-mono"
+            className="hidden sm:block text-xs bg-secondary/80 border border-border text-foreground rounded-md px-2.5 py-1.5 cursor-pointer hover:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary font-mono"
             aria-label="Theme selector"
           >
             {themes.map((t) => (
@@ -105,20 +105,20 @@ export function Navbar() {
 
           {isAuthenticated && user ? (
             <div className="flex items-center gap-3">
-              <div className="hidden lg:flex flex-col text-right">
-                <span className="text-xs font-bold text-foreground flex items-center justify-end gap-1">
+              <div className="hidden lg:flex flex-col text-right font-mono">
+                <span className="text-xs font-bold text-foreground flex items-center justify-end gap-1.5">
                   {user.displayName}
-                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-primary/20 text-primary border border-primary/30">
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/20 text-primary border border-primary/30 font-bold">
                     LVL {user.level}
                   </span>
                 </span>
-                <span className="text-[10px] font-mono text-muted-foreground">
-                  Score: {user.bestScore.toLocaleString()}
+                <span className="text-[10px] text-muted-foreground">
+                  Score: {user.bestScore.toLocaleString()} PTS
                 </span>
               </div>
               <button
                 onClick={() => logout()}
-                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-destructive px-2 py-1.5 rounded-md hover:bg-destructive/10 transition-colors"
+                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-destructive px-2 py-1.5 rounded-md hover:bg-destructive/10 transition-colors font-mono"
                 title="Sign Out"
               >
                 <LogOut className="h-4 w-4" />
@@ -129,16 +129,16 @@ export function Navbar() {
             <div className="flex items-center gap-2">
               <Link
                 href="/login"
-                className="text-xs text-muted-foreground hover:text-foreground px-3 py-1.5 rounded-md hover:bg-secondary/50 transition-colors font-medium"
+                className="text-xs text-muted-foreground hover:text-foreground px-3 py-1.5 rounded-md hover:bg-secondary/60 transition-colors font-mono font-medium"
               >
                 Sign In
               </Link>
               <Link
                 href="/register"
-                className="text-xs bg-primary text-primary-foreground font-semibold px-3 py-1.5 rounded-md hover:opacity-90 transition-opacity flex items-center gap-1"
+                className="text-xs bg-primary text-primary-foreground font-display font-bold px-3.5 py-1.5 rounded-md hover:opacity-90 transition-opacity flex items-center gap-1.5 glow-primary"
               >
                 <UserIcon className="h-3.5 w-3.5" />
-                Register
+                ENLIST
               </Link>
             </div>
           )}
