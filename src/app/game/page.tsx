@@ -4,10 +4,11 @@ import { useState } from "react";
 import { PhaserGame } from "@/components/game/PhaserGame";
 import { useGameStore } from "@/store/useGameStore";
 import { Difficulty, GameMode, HudMode } from "@/types";
-import { Terminal, Shield, Zap, Flame, Award, Sliders, HelpCircle, Info } from "lucide-react";
+import { Terminal, Shield, Zap, Flame, Award, Sliders, HelpCircle, Info, RotateCcw } from "lucide-react";
 import { HowToPlayModal } from "@/components/game/HowToPlayModal";
 
 export default function GamePage() {
+  const [restartKey, setRestartKey] = useState(0);
   const {
     difficulty,
     setDifficulty,
@@ -114,15 +115,24 @@ export default function GamePage() {
           </div>
         </div>
 
-        {/* How to Play Guide Modal Button */}
-        <div className="flex items-center gap-3">
+        {/* Actions: Restart & How to Play */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          <button
+            type="button"
+            onClick={() => setRestartKey((prev) => prev + 1)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-secondary/80 border border-border hover:border-primary/50 text-xs font-display font-bold text-muted-foreground hover:text-foreground transition-all hover:bg-secondary active:scale-95 shadow-sm"
+            title="Restart Game"
+          >
+            <RotateCcw className="h-3.5 w-3.5 text-primary" />
+            RESTART
+          </button>
           <HowToPlayModal />
         </div>
       </div>
 
       {/* Arcade Playfield Component */}
       <PhaserGame
-        key={`${mode}-${difficulty}`}
+        key={`${mode}-${difficulty}-${restartKey}`}
         mode={mode}
         difficulty={difficulty}
       />

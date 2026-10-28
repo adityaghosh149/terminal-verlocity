@@ -56,6 +56,31 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
   // Packets state
   const [activePackets, setActivePackets] = useState<PacketDefinition[]>([]);
 
+  // Synchronized state refs for zero-latency keystroke processing without event listener churning
+  const gameStatusRef = useRef(gameStatus);
+  gameStatusRef.current = gameStatus;
+
+  const activePacketsRef = useRef(activePackets);
+  activePacketsRef.current = activePackets;
+
+  const activeTargetIdRef = useRef(activeTargetId);
+  activeTargetIdRef.current = activeTargetId;
+
+  const currentInputRef = useRef(currentInput);
+  currentInputRef.current = currentInput;
+
+  const comboRef = useRef(combo);
+  comboRef.current = combo;
+
+  const maxComboRef = useRef(maxCombo);
+  maxComboRef.current = maxCombo;
+
+  const scoreRef = useRef(score);
+  scoreRef.current = score;
+
+  const livesRef = useRef(lives);
+  livesRef.current = lives;
+
   // Internal run refs
   const runDataRef = useRef<{
     runId: string;
@@ -147,28 +172,47 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
       };
 
       setScore(0);
+      scoreRef.current = 0;
       setLives(3);
+      livesRef.current = 3;
       setCombo(0);
+      comboRef.current = 0;
       setMaxCombo(0);
+      maxComboRef.current = 0;
       setTimeRemaining(mode === "classic" ? 90 : 0);
       setElapsedSeconds(0);
       setCurrentInput("");
+      currentInputRef.current = "";
       setActivePackets(initialPackets);
+      activePacketsRef.current = initialPackets;
       setActiveTargetId(null);
+      activeTargetIdRef.current = null;
       setGameStatus("playing");
+      gameStatusRef.current = "playing";
 
-      if (inputRef.current) {
-        inputRef.current.focus();
-      }
+      // Instantly focus game container so physical keyboard works immediately without clicking
+      setTimeout(() => {
+        containerRef.current?.focus();
+      }, 10);
     } catch (err) {
       console.error("Game init failed:", err);
     }
   }, [mode, difficulty]);
 
+  // Handle immediate restart
+  const handleRestart = useCallback(() => {
+    soundEngine.playKeyClick();
+    initializeRun();
+    setTimeout(() => {
+      containerRef.current?.focus();
+    }, 10);
+  }, [initializeRun]);
+
   // Handle Game Over & Score Submission
   const handleGameOver = useCallback(
     async (finalScoreVal: number, maxComboVal: number) => {
       setGameStatus("gameover");
+      gameStatusRef.current = "gameover";
       soundEngine.playGameOver();
 
       const run = runDataRef.current;
@@ -330,16 +374,19 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
         }
 
         if (escapedCount > 0) {
+          comboRef.current = 0;
           setCombo(0);
           setLives((l) => {
             const nextL = l - escapedCount;
+            livesRef.current = Math.max(0, nextL);
             if (nextL <= 0) {
-              handleGameOver(score, maxCombo);
+              handleGameOver(scoreRef.current, maxComboRef.current);
             }
             return Math.max(0, nextL);
           });
         }
 
+        activePacketsRef.current = next;
         return next;
       });
 
@@ -350,27 +397,33 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
     return () => cancelAnimationFrame(animId);
   }, [difficulty, gameStatus, getOptimalLane, handleGameOver, maxCombo, mode, score]);
 
-  // Handle Keystrokes & Typing Interception
+  // Handle Keystrokes & Typing Interception (Reads from refs for instantaneous response)
   const processKey = useCallback(
     (char: string) => {
-      if (gameStatus !== "playing") return;
+      if (gameStatusRef.current !== "playing") return;
 
       const upperChar = char.toUpperCase();
       runDataRef.current.keystrokesTotal += 1;
       soundEngine.playKeyClick();
 
+      const packets = activePacketsRef.current;
+      const targetId = activeTargetIdRef.current;
+      const curInput = currentInputRef.current;
+
       // Find best target packet
-      let target = activePackets.find((p) => p.id === activeTargetId);
+      let target = packets.find((p) => p.id === targetId);
 
       if (!target) {
         // Find packet starting with this character (prioritize packet lowest on screen / least duration remaining)
-        const candidates = activePackets
+        const candidates = packets
           .filter((p) => p.code.startsWith(upperChar))
           .sort((a, b) => a.durationSeconds - b.durationSeconds);
 
         if (candidates.length > 0) {
           target = candidates[0];
+          activeTargetIdRef.current = target.id;
           setActiveTargetId(target.id);
+          currentInputRef.current = upperChar;
           setCurrentInput(upperChar);
           runDataRef.current.keystrokesCorrect += 1;
           return;
@@ -381,9 +434,10 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
       }
 
       // If we already have a target, check next expected character
-      const expectedNext = target.code.charAt(currentInput.length);
+      const expectedNext = target.code.charAt(curInput.length);
       if (upperChar === expectedNext) {
-        const nextInput = currentInput + upperChar;
+        const nextInput = curInput + upperChar;
+        currentInputRef.current = nextInput;
         setCurrentInput(nextInput);
         runDataRef.current.keystrokesCorrect += 1;
 
@@ -397,28 +451,35 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
 
           let pointsDelta = 0;
           if (outcome === "clean") {
-            const comboMultiplier = 1 + Math.min(2.0, combo * 0.1);
+            const currentCombo = comboRef.current;
+            const comboMultiplier = 1 + Math.min(2.0, currentCombo * 0.1);
             pointsDelta = Math.round(target.reward * comboMultiplier);
             soundEngine.playCleanInterception();
-            const nextCombo = combo + 1;
+            const nextCombo = currentCombo + 1;
+            comboRef.current = nextCombo;
             setCombo(nextCombo);
-            if (nextCombo > maxCombo) setMaxCombo(nextCombo);
+            if (nextCombo > maxComboRef.current) {
+              maxComboRef.current = nextCombo;
+              setMaxCombo(nextCombo);
+            }
             if (nextCombo % 5 === 0) soundEngine.playComboUp(nextCombo);
           } else {
             // Corrupted packet!
             pointsDelta = -target.corruptionPenalty;
             soundEngine.playCorruptedGlitch();
+            comboRef.current = 0;
             setCombo(0);
-            setLives((l) => {
-              const nextLives = l - 1;
-              if (nextLives <= 0) {
-                handleGameOver(score + pointsDelta, maxCombo);
-              }
-              return Math.max(0, nextLives);
-            });
+            const nextLives = livesRef.current - 1;
+            livesRef.current = Math.max(0, nextLives);
+            setLives(livesRef.current);
+            if (nextLives <= 0) {
+              handleGameOver(scoreRef.current + pointsDelta, maxComboRef.current);
+            }
           }
 
-          setScore((s) => Math.max(0, s + pointsDelta));
+          const newScore = Math.max(0, scoreRef.current + pointsDelta);
+          scoreRef.current = newScore;
+          setScore(newScore);
 
           // Log packet event
           runDataRef.current.events.push({
@@ -437,31 +498,103 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
           });
 
           // Remove packet from active list
-          setActivePackets((prev) => prev.filter((p) => p.id !== target?.id));
+          const remaining = packets.filter((p) => p.id !== target?.id);
+          activePacketsRef.current = remaining;
+          setActivePackets(remaining);
+
+          activeTargetIdRef.current = null;
           setActiveTargetId(null);
+          currentInputRef.current = "";
           setCurrentInput("");
         }
       } else {
         // Mistype on active target: reset current target focus
+        currentInputRef.current = "";
         setCurrentInput("");
+        activeTargetIdRef.current = null;
         setActiveTargetId(null);
       }
     },
-    [activePackets, activeTargetId, combo, currentInput, gameStatus, handleGameOver, maxCombo, score]
+    [handleGameOver]
   );
+
+  // Auto-focus container on mount and when entering playing or ready states
+  useEffect(() => {
+    containerRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
+    if (gameStatus === "playing" || gameStatus === "ready") {
+      containerRef.current?.focus();
+    }
+  }, [gameStatus]);
 
   // Global Keyboard Listener
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Backspace") {
-        setCurrentInput((prev) => prev.slice(0, -1));
+      // Ignore if user is typing in a form input outside the game (e.g. search, modal, auth)
+      if (
+        (e.target instanceof HTMLInputElement && e.target !== inputRef.current) ||
+        e.target instanceof HTMLTextAreaElement
+      ) {
         return;
       }
+
+      // If mobile virtual input is focused, let onInput handle it to avoid duplicate keystroke events
+      if (e.target === inputRef.current) {
+        return;
+      }
+
+      // If in ready or gameover state, Space or Enter starts / restarts immediately
+      if (
+        (gameStatusRef.current === "ready" || gameStatusRef.current === "gameover") &&
+        (e.key === " " || e.key === "Enter")
+      ) {
+        e.preventDefault();
+        initializeRun();
+        setTimeout(() => {
+          containerRef.current?.focus();
+        }, 10);
+        return;
+      }
+
+      // If in ready state and player presses any letter [a-zA-Z], automatically start run and type that letter
+      if (
+        gameStatusRef.current === "ready" &&
+        e.key.length === 1 &&
+        /^[a-zA-Z]$/.test(e.key) &&
+        !e.ctrlKey &&
+        !e.metaKey &&
+        !e.altKey
+      ) {
+        e.preventDefault();
+        initializeRun().then(() => {
+          processKey(e.key);
+          setTimeout(() => {
+            containerRef.current?.focus();
+          }, 10);
+        });
+        return;
+      }
+
+      if (e.key === "Backspace") {
+        currentInputRef.current = currentInputRef.current.slice(0, -1);
+        setCurrentInput(currentInputRef.current);
+        if (currentInputRef.current.length === 0) {
+          activeTargetIdRef.current = null;
+          setActiveTargetId(null);
+        }
+        return;
+      }
+
       if (e.key === "Escape") {
+        activeTargetIdRef.current = null;
         setActiveTargetId(null);
+        currentInputRef.current = "";
         setCurrentInput("");
         return;
       }
+
       if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
         processKey(e.key);
       }
@@ -469,12 +602,18 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [processKey]);
+  }, [initializeRun, processKey]);
 
   return (
     <div
       ref={containerRef}
-      className="relative w-full max-w-5xl mx-auto h-[690px] rounded-xl border border-primary/30 bg-card/95 overflow-hidden shadow-2xl flex flex-col font-sans select-none"
+      tabIndex={0}
+      role="region"
+      aria-label="Terminal Velocity Arcade Playfield"
+      className="relative w-full max-w-5xl mx-auto h-[690px] rounded-xl border border-primary/30 bg-card/95 overflow-hidden shadow-2xl flex flex-col font-sans select-none focus:outline-none focus:ring-1 focus:ring-primary/50"
+      onClick={() => {
+        containerRef.current?.focus();
+      }}
     >
       {/* CRT Scanline Overlay */}
       <div className="absolute inset-0 scanlines z-30 pointer-events-none" />
@@ -532,8 +671,8 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
           <span>HUD: {hudMode.toUpperCase()}</span>
         </div>
 
-        {/* Right side: Timer & Sound toggle */}
-        <div className="flex items-center gap-4">
+        {/* Right side: Timer, In-Game Restart & Sound toggle */}
+        <div className="flex items-center gap-3 sm:gap-4">
           <div>
             <div className="text-[10px] font-mono tracking-widest text-muted-foreground uppercase text-right">
               {mode === "classic" ? "TIME REMAINING" : "SURVIVAL TIME"}
@@ -547,6 +686,19 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
                     .padStart(2, "0")}`}
             </div>
           </div>
+
+          {/* In-Game Restart Button */}
+          <button
+            onClick={(e) => {
+              e.currentTarget.blur();
+              handleRestart();
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-secondary/80 border border-border hover:border-primary/50 text-xs font-mono font-bold text-muted-foreground hover:text-foreground transition-all active:scale-95 shadow-sm glow-hover"
+            title="Restart Current Game"
+          >
+            <RotateCcw className="h-3.5 w-3.5 text-primary" />
+            <span className="hidden sm:inline">RESTART</span>
+          </button>
 
           <button
             onClick={() => setSoundEnabled(!soundEnabled)}
@@ -599,7 +751,13 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
 
             <div className="mt-8 flex items-center justify-center">
               <button
-                onClick={initializeRun}
+                onClick={(e) => {
+                  e.currentTarget.blur();
+                  initializeRun();
+                  setTimeout(() => {
+                    containerRef.current?.focus();
+                  }, 10);
+                }}
                 className="bg-primary text-primary-foreground font-display font-black px-8 py-3.5 rounded-lg text-sm hover:opacity-90 transition-all glow-primary tracking-widest"
               >
                 START INTERCEPTION [SPACE]
@@ -638,11 +796,17 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
 
             <div className="mt-6 flex items-center gap-3">
               <button
-                onClick={initializeRun}
+                onClick={(e) => {
+                  e.currentTarget.blur();
+                  initializeRun();
+                  setTimeout(() => {
+                    containerRef.current?.focus();
+                  }, 10);
+                }}
                 className="flex items-center gap-2 bg-primary text-primary-foreground font-display font-bold px-6 py-2.5 rounded-lg text-xs hover:opacity-90 transition-all glow-primary"
               >
                 <RotateCcw className="h-4 w-4" />
-                PLAY AGAIN
+                PLAY AGAIN [SPACE]
               </button>
               <button
                 onClick={() => router.push("/dashboard")}
@@ -779,7 +943,9 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
         <input
           ref={inputRef}
           type="text"
-          className="opacity-0 absolute -z-10 h-0 w-0"
+          className="opacity-0 absolute -z-10 h-0 w-0 pointer-events-none"
+          tabIndex={-1}
+          aria-hidden="true"
           onChange={(e) => {
             const val = e.target.value;
             if (val.length > 0) {
