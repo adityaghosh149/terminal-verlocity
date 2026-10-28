@@ -1,0 +1,156 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root,
+  [data-theme="midnight"] {
+    --background: 222 47% 6%;
+    --foreground: 210 40% 98%;
+    --card: 222 47% 9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222 47% 9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 187 100% 50%;
+    --primary-foreground: 222 47% 6%;
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217 33% 14%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 199 89% 48%;
+    --accent-foreground: 222 47% 6%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217 33% 20%;
+    --input: 217 33% 18%;
+    --ring: 187 100% 50%;
+    --radius: 0.5rem;
+  }
+
+  [data-theme="cyberpunk"] {
+    --background: 275 60% 5%;
+    --foreground: 280 40% 98%;
+    --card: 275 55% 10%;
+    --card-foreground: 280 40% 98%;
+    --popover: 275 55% 10%;
+    --popover-foreground: 280 40% 98%;
+    --primary: 326 100% 50%;
+    --primary-foreground: 275 60% 5%;
+    --secondary: 272 40% 20%;
+    --secondary-foreground: 280 40% 98%;
+    --muted: 272 35% 15%;
+    --muted-foreground: 275 25% 65%;
+    --accent: 265 89% 68%;
+    --accent-foreground: 275 60% 5%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 280 40% 98%;
+    --border: 275 40% 25%;
+    --input: 275 40% 22%;
+    --ring: 326 100% 50%;
+  }
+
+  [data-theme="terminal"] {
+    --background: 120 50% 3%;
+    --foreground: 140 100% 70%;
+    --card: 120 40% 6%;
+    --card-foreground: 140 100% 70%;
+    --popover: 120 40% 6%;
+    --popover-foreground: 140 100% 70%;
+    --primary: 142 100% 50%;
+    --primary-foreground: 120 50% 3%;
+    --secondary: 120 30% 12%;
+    --secondary-foreground: 140 100% 70%;
+    --muted: 120 30% 10%;
+    --muted-foreground: 140 40% 45%;
+    --accent: 142 80% 45%;
+    --accent-foreground: 120 50% 3%;
+    --destructive: 0 80% 55%;
+    --destructive-foreground: 140 100% 70%;
+    --border: 120 35% 16%;
+    --input: 120 35% 14%;
+    --ring: 142 100% 50%;
+  }
+
+  [data-theme="amber"] {
+    --background: 35 30% 5%;
+    --foreground: 45 100% 90%;
+    --card: 35 25% 9%;
+    --card-foreground: 45 100% 90%;
+    --popover: 35 25% 9%;
+    --popover-foreground: 45 100% 90%;
+    --primary: 43 100% 50%;
+    --primary-foreground: 35 30% 5%;
+    --secondary: 35 20% 16%;
+    --secondary-foreground: 45 100% 90%;
+    --muted: 35 20% 13%;
+    --muted-foreground: 40 20% 60%;
+    --accent: 35 90% 48%;
+    --accent-foreground: 35 30% 5%;
+    --destructive: 0 80% 55%;
+    --destructive-foreground: 45 100% 90%;
+    --border: 35 25% 20%;
+    --input: 35 25% 18%;
+    --ring: 43 100% 50%;
+  }
+
+  [data-theme="light"] {
+    --background: 210 40% 98%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 200 98% 39%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 40% 92%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 210 40% 94%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 199 89% 48%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 214 32% 88%;
+    --input: 214 32% 88%;
+    --ring: 200 98% 39%;
+  }
+}
+
+body {
+  color: hsl(var(--foreground));
+  background: hsl(var(--background));
+  font-feature-settings: "rlig" 1, "calt" 1;
+  overflow-x: hidden;
+}
+
+/* Cyberpunk terminal grid background */
+.terminal-grid {
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+/* CRT monitor scanlines overlay */
+.scanlines {
+  background: linear-gradient(
+    rgba(18, 16, 16, 0) 50%, 
+    rgba(0, 0, 0, 0.25) 50%
+  ), linear-gradient(
+    90deg,
+    rgba(255, 0, 0, 0.03),
+    rgba(0, 255, 0, 0.01),
+    rgba(0, 0, 255, 0.03)
+  );
+  background-size: 100% 3px, 3px 100%;
+  pointer-events: none;
+}
+
+/* Glow utility classes */
+.glow-primary {
+  box-shadow: 0 0 20px -3px hsl(var(--primary) / 0.5);
+}
+
+.glow-text {
+  text-shadow: 0 0 10px currentColor;
+}
