@@ -189,6 +189,43 @@ class SoundEngine {
     osc.start(now);
     osc.stop(now + 0.6);
   }
+
+  /**
+   * Emergency EMP Shockwave sound effect
+   */
+  public playEmpBlast() {
+    if (!this.enabled) return;
+    this.initContext();
+    if (!this.ctx) return;
+
+    const now = this.ctx.currentTime;
+
+    // Sub-bass resonant pulse
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = "sawtooth";
+    osc.frequency.setValueAtTime(280, now);
+    osc.frequency.exponentialRampToValueAtTime(35, now + 0.45);
+    gain.gain.setValueAtTime(0.28 * this.volume, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.45);
+
+    // High electrical shimmer sweep
+    const shimOsc = this.ctx.createOscillator();
+    const shimGain = this.ctx.createGain();
+    shimOsc.type = "sine";
+    shimOsc.frequency.setValueAtTime(1400, now);
+    shimOsc.frequency.exponentialRampToValueAtTime(300, now + 0.35);
+    shimGain.gain.setValueAtTime(0.18 * this.volume, now);
+    shimGain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+    shimOsc.connect(shimGain);
+    shimGain.connect(this.ctx.destination);
+    shimOsc.start(now);
+    shimOsc.stop(now + 0.35);
+  }
 }
 
 export const soundEngine = new SoundEngine();

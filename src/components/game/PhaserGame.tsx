@@ -73,6 +73,15 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
   const [feedbacks, setFeedbacks] = useState<FloatingFeedback[]>([]);
   const [isShaking, setIsShaking] = useState(false);
 
+  // Tactical Emergency EMP Defuser ability (Starts with 1, recharges at 10x combo)
+  const [empCharges, setEmpCharges] = useState(1);
+  const empChargesRef = useRef(1);
+  empChargesRef.current = empCharges;
+  const [empActive, setEmpActive] = useState(false);
+
+  // Audio-reactive rhythm grid pulse state
+  const [gridPulse, setGridPulse] = useState(false);
+
   const triggerShake = useCallback(() => {
     if (screenShake) {
       setIsShaking(true);
@@ -166,6 +175,65 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
     return minLane;
   }, []);
 
+  // Tactical Emergency EMP Defusal Ability: Vaporizes lowest imminent threat packet without shield penalty
+  const triggerEmp = useCallback(() => {
+    if (gameStatusRef.current !== "playing" || empChargesRef.current <= 0) return;
+
+    // Decrement charge
+    const newCharges = empChargesRef.current - 1;
+    empChargesRef.current = newCharges;
+    setEmpCharges(newCharges);
+
+    // Audio & Shockwave FX
+    soundEngine.playEmpBlast();
+    setEmpActive(true);
+    setTimeout(() => setEmpActive(false), 650);
+
+    const packets = activePacketsRef.current;
+    if (packets.length === 0) return;
+
+    // Find the packet closest to the defense line (least duration remaining)
+    const sorted = [...packets].sort((a, b) => a.durationSeconds - b.durationSeconds);
+    const targetPkt = sorted[0];
+
+    // Clear active target if player was currently locked onto this packet
+    if (activeTargetIdRef.current === targetPkt.id) {
+      activeTargetIdRef.current = null;
+      currentInputRef.current = "";
+      setActiveTargetId(null);
+      setCurrentInput("");
+    }
+
+    // Award 50% reward points as partial tactical bypass
+    const defusedPoints = Math.round(targetPkt.reward * 0.5);
+    const newScore = scoreRef.current + defusedPoints;
+    scoreRef.current = newScore;
+    setScore(newScore);
+
+    // Record clean packet event
+    runDataRef.current.events.push({
+      packetId: targetPkt.id,
+      code: targetPkt.code,
+      reward: targetPkt.reward,
+      corruptionProbability: targetPkt.corruptionProbability,
+      corruptionPenalty: targetPkt.corruptionPenalty,
+      expectedValue: targetPkt.expectedValue,
+      action: "intercepted",
+      outcome: "clean",
+      timestampMs: Date.now() - runDataRef.current.startTime,
+      pointsDelta: defusedPoints,
+      wpm: 60,
+      accuracy: 100,
+    });
+
+    addFeedback(`⚡ DEFUSED! +${defusedPoints} PTS`, "clean", targetPkt.laneIndex, 300);
+
+    // Remove defused packet from playfield
+    const remaining = packets.filter((p) => p.id !== targetPkt.id);
+    activePacketsRef.current = remaining;
+    setActivePackets(remaining);
+  }, [addFeedback]);
+
   // Initialize Game Run Session with Server
   const initializeRun = useCallback(async () => {
     try {
@@ -217,6 +285,9 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
       comboRef.current = 0;
       setMaxCombo(0);
       maxComboRef.current = 0;
+      setEmpCharges(1);
+      empChargesRef.current = 1;
+      setEmpActive(false);
       setTimeRemaining(mode === "classic" ? 90 : 0);
       setElapsedSeconds(0);
       setCurrentInput("");
@@ -478,6 +549,8 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
           currentInputRef.current = upperChar;
           setCurrentInput(upperChar);
           runDataRef.current.keystrokesCorrect += 1;
+          setGridPulse(true);
+          setTimeout(() => setGridPulse(false), 90);
           return;
         } else {
           // Mistype
@@ -492,6 +565,8 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
         currentInputRef.current = nextInput;
         setCurrentInput(nextInput);
         runDataRef.current.keystrokesCorrect += 1;
+        setGridPulse(true);
+        setTimeout(() => setGridPulse(false), 90);
 
         // Completed packet!
         if (nextInput === target.code) {
@@ -517,6 +592,11 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
             }
             if (nextCombo === 3 || nextCombo === 6 || nextCombo === 10) {
               soundEngine.playComboUp(nextCombo);
+            }
+            if (nextCombo === 10) {
+              empChargesRef.current += 1;
+              setEmpCharges((c) => c + 1);
+              addFeedback("⚡ EMP RESTORED!", "clean", 1, 180);
             }
             addFeedback(`+${pointsDelta} PTS (${comboMultiplier}x)`, "clean", target.laneIndex, 250);
           } else {
@@ -635,6 +715,12 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
         return;
       }
 
+      if (e.key === "Tab") {
+        e.preventDefault();
+        triggerEmp();
+        return;
+      }
+
       if (e.key === "Backspace") {
         currentInputRef.current = currentInputRef.current.slice(0, -1);
         setCurrentInput(currentInputRef.current);
@@ -660,7 +746,7 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [initializeRun, processKey]);
+  }, [initializeRun, processKey, triggerEmp]);
 
   return (
     <div
@@ -808,8 +894,22 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
 
       {/* Main Arcade Canvas Playfield (4 Lanes) */}
       <div className="relative flex-1 bg-black/75 overflow-hidden">
-        {/* Subtle grid lines & 4 lane guides */}
-        <div className="absolute inset-0 terminal-grid opacity-35 pointer-events-none" />
+        {/* Audio-reactive subtle grid lines & 4 lane guides */}
+        <div
+          className={`absolute inset-0 terminal-grid pointer-events-none transition-all duration-150 ${
+            gridPulse
+              ? "opacity-60 scale-[1.003]"
+              : combo >= 6
+              ? "opacity-45"
+              : "opacity-30"
+          }`}
+        />
+
+        {/* EMP Blast Shockwave Ring Effect */}
+        {empActive && (
+          <div className="absolute top-1/2 left-1/2 w-96 h-96 -translate-x-1/2 -translate-y-1/2 rounded-full border-4 border-primary bg-primary/10 pointer-events-none z-30 animate-emp-shockwave shadow-[0_0_80px_hsl(var(--primary))]" />
+        )}
+
         <div className="absolute inset-0 flex justify-between px-12 pointer-events-none opacity-15">
           <div className="w-[1px] h-full bg-border border-dashed border-l" />
           <div className="w-[1px] h-full bg-border border-dashed border-l" />
@@ -879,57 +979,134 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
         )}
 
         {/* Game Over Overlay */}
-        {gameStatus === "gameover" && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/90 backdrop-blur-md z-40 p-6 text-center animate-in zoom-in-95 duration-200">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-destructive/10 border border-destructive/30 mb-3 glow-danger">
-              <AlertTriangle className="h-8 w-8 text-rose-500 animate-bounce" />
-            </div>
-            <h2 className="text-3xl font-black font-display tracking-tight text-rose-500">
-              TERMINAL SHUTDOWN
-            </h2>
-            <p className="text-xs font-mono text-muted-foreground mt-1">
-              Firewall depleted or operational timeline concluded
-            </p>
+        {gameStatus === "gameover" && (() => {
+          const events = runDataRef.current.events;
+          const intercepted = events.filter((e) => e.action === "intercepted");
+          const totalEV = Math.round(intercepted.reduce((sum, e) => sum + e.expectedValue, 0));
+          const realizedPts = intercepted.reduce((sum, e) => sum + e.pointsDelta, 0);
+          const deltaEV = realizedPts - totalEV;
+          const safeCount = intercepted.filter((e) => e.corruptionProbability < 0.25).length;
+          const cautionCount = intercepted.filter((e) => e.corruptionProbability >= 0.25 && e.corruptionProbability < 0.50).length;
+          const dangerCount = intercepted.filter((e) => e.corruptionProbability >= 0.50).length;
+          const missedCount = events.filter((e) => e.action === "missed").length;
+          const corruptedCount = intercepted.filter((e) => e.outcome === "corrupted").length;
 
-            <div className="mt-5 p-5 rounded-xl bg-card border border-border/80 max-w-sm w-full font-mono">
-              <div className="text-[11px] text-muted-foreground uppercase">FINAL VALIDATED SCORE</div>
-              <div className="text-4xl font-black text-primary glow-text mt-1">
-                {score.toLocaleString()} PTS
-              </div>
-              <div className="grid grid-cols-2 gap-2 mt-4 text-xs text-muted-foreground">
-                <div className="p-2.5 rounded bg-secondary/50 border border-border/40">
-                  MAX COMBO: <span className="text-amber-400 font-bold">{getComboMultiplier(maxCombo)}x ({maxCombo})</span>
-                </div>
-                <div className="p-2.5 rounded bg-secondary/50 border border-border/40">
-                  CAPTURED: <span className="text-foreground font-bold">{runDataRef.current.events.filter(e => e.action === "intercepted").length}</span>
-                </div>
-              </div>
-            </div>
+          let adviceTag = "BALANCED TACTICAL EXECUTION";
+          let adviceText = "Steady operational execution across multiple lanes. Maintain rhythm above 60 WPM to handle high-difficulty cascades.";
 
-            <div className="mt-6 flex items-center gap-3">
-              <button
-                onClick={(e) => {
-                  e.currentTarget.blur();
-                  initializeRun();
-                  setTimeout(() => {
-                    containerRef.current?.focus();
-                  }, 10);
-                }}
-                className="flex items-center gap-2 bg-primary text-primary-foreground font-display font-bold px-6 py-2.5 rounded-lg text-xs hover:opacity-90 transition-all glow-primary"
-              >
-                <RotateCcw className="h-4 w-4" />
-                PLAY AGAIN [SPACE]
-              </button>
-              <button
-                onClick={() => router.push("/dashboard")}
-                className="flex items-center gap-2 bg-secondary hover:bg-secondary/80 text-foreground font-display font-medium px-5 py-2.5 rounded-lg text-xs border border-border transition-all"
-              >
-                <BarChart2 className="h-4 w-4 text-primary" />
-                VIEW DATA SCIENCE ANALYTICS
-              </button>
+          if (dangerCount >= 2 && corruptedCount >= 1) {
+            adviceTag = "HIGH VARIANCE OVEREXPOSURE";
+            adviceText = "You targeted high-stakes packets (🔴 Danger) without sufficient shield buffer. Recommendation: Prioritize 🟢 Safe & 🟡 Caution tiers to preserve shields and sustain 3x/4x multipliers.";
+          } else if (missedCount >= 2) {
+            adviceTag = "FIREWALL VELOCITY BOTTLENECK";
+            adviceText = "Packets breached the firewall defense line before completion. Recommendation: Prioritize words closest to the defense line, and deploy the [TAB] EMP Defuser during surges.";
+          } else if (safeCount > 0 && cautionCount === 0 && dangerCount === 0) {
+            adviceTag = "CONSERVATIVE BIAS";
+            adviceText = "You strictly typed safe packets. While firewall survival was maximized, expected point yield was capped. Recommendation: Target 🟡 Caution packets during active streak combos.";
+          } else if (deltaEV >= 0) {
+            adviceTag = "OPTIMAL STOCHASTIC EXECUTION";
+            adviceText = `Superb risk-reward discipline! Realized score exceeded mathematical expectancy by +${deltaEV} PTS. High streak combo retention mitigated downside variance.`;
+          }
+
+          return (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/90 backdrop-blur-md z-40 p-4 sm:p-6 text-center animate-in zoom-in-95 duration-200 overflow-y-auto">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-destructive/10 border border-destructive/30 mb-2 glow-danger shrink-0">
+                <AlertTriangle className="h-6 w-6 text-rose-500 animate-bounce" />
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-black font-display tracking-tight text-rose-500">
+                TERMINAL SHUTDOWN
+              </h2>
+              <p className="text-[11px] font-mono text-muted-foreground mt-0.5">
+                Firewall depleted or operational timeline concluded
+              </p>
+
+              {/* Main Score & Telemetry Box */}
+              <div className="mt-3 p-4 rounded-xl bg-card border border-border/80 max-w-lg w-full font-mono text-left shadow-2xl">
+                <div className="flex items-center justify-between border-b border-border/40 pb-2.5 mb-2.5">
+                  <div>
+                    <div className="text-[10px] text-muted-foreground uppercase">FINAL VALIDATED SCORE</div>
+                    <div className="text-3xl font-black text-primary glow-text">
+                      {score.toLocaleString()} PTS
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-[10px] text-muted-foreground uppercase">MAX COMBO</div>
+                    <div className="text-lg font-bold text-amber-400">
+                      {getComboMultiplier(maxCombo)}x ({maxCombo} streak)
+                    </div>
+                  </div>
+                </div>
+
+                {/* Data Science Telemetry Grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-2.5 text-xs">
+                  <div className="p-2 rounded bg-secondary/50 border border-border/40">
+                    <div className="text-[9px] text-muted-foreground uppercase">REALIZED PTS</div>
+                    <div className="font-bold text-foreground">{realizedPts}</div>
+                  </div>
+                  <div className="p-2 rounded bg-secondary/50 border border-border/40">
+                    <div className="text-[9px] text-muted-foreground uppercase">EXPECTED EV</div>
+                    <div className="font-bold text-primary">+{totalEV}</div>
+                  </div>
+                  <div className="p-2 rounded bg-secondary/50 border border-border/40">
+                    <div className="text-[9px] text-muted-foreground uppercase">Δ EV VARIANCE</div>
+                    <div className={`font-bold ${deltaEV >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                      {deltaEV >= 0 ? `+${deltaEV}` : deltaEV}
+                    </div>
+                  </div>
+                  <div className="p-2 rounded bg-secondary/50 border border-border/40">
+                    <div className="text-[9px] text-muted-foreground uppercase">MISSED / TRAPS</div>
+                    <div className="font-bold text-rose-400">{missedCount} / {corruptedCount}</div>
+                  </div>
+                </div>
+
+                {/* Risk Distribution Tiers */}
+                <div className="p-2 rounded bg-secondary/30 border border-border/40 mb-2.5 text-[11px] flex flex-wrap items-center justify-between gap-1">
+                  <span className="text-muted-foreground text-[10px]">RISK CAPTURED:</span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-emerald-400 font-bold">🟢 Safe: {safeCount}</span>
+                    <span className="text-amber-400 font-bold">🟡 Caution: {cautionCount}</span>
+                    <span className="text-rose-400 font-bold">🔴 Danger: {dangerCount}</span>
+                  </div>
+                </div>
+
+                {/* Data Science Tactical Recommendation */}
+                <div className="p-2.5 rounded-lg bg-primary/10 border border-primary/30 text-[11px]">
+                  <div className="flex items-center gap-1.5 text-primary font-bold mb-1 uppercase tracking-wider text-[10px]">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    DATA SCIENCE INSIGHT: {adviceTag}
+                  </div>
+                  <p className="text-muted-foreground font-sans text-xs leading-relaxed">
+                    {adviceText}
+                  </p>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="mt-3.5 flex flex-wrap items-center justify-center gap-3">
+                <button
+                  onClick={(e) => {
+                    e.currentTarget.blur();
+                    initializeRun();
+                    setTimeout(() => {
+                      containerRef.current?.focus();
+                    }, 10);
+                  }}
+                  className="flex items-center gap-2 bg-primary text-primary-foreground font-display font-bold px-6 py-2.5 rounded-lg text-xs hover:opacity-90 transition-all glow-primary"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  PLAY AGAIN [SPACE]
+                </button>
+                <button
+                  onClick={() => router.push("/dashboard")}
+                  className="flex items-center gap-2 bg-secondary hover:bg-secondary/80 text-foreground font-display font-medium px-5 py-2.5 rounded-lg text-xs border border-border transition-all"
+                >
+                  <BarChart2 className="h-4 w-4 text-primary" />
+                  VIEW DATA SCIENCE ANALYTICS
+                </button>
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* 4 Multi-Lane Descending Packets */}
         {gameStatus === "playing" &&
@@ -1071,6 +1248,28 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
         />
 
         <div className="flex items-center gap-3">
+          {/* Tactical EMP Defusal Trigger Button */}
+          <button
+            onClick={(e) => {
+              e.currentTarget.blur();
+              triggerEmp();
+            }}
+            disabled={empCharges <= 0 || gameStatus !== "playing"}
+            className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-mono font-bold transition-all shadow-sm ${
+              empCharges > 0 && gameStatus === "playing"
+                ? "bg-primary/20 text-primary border border-primary/50 hover:bg-primary/30 glow-primary active:scale-95 cursor-pointer"
+                : "bg-secondary/40 text-muted-foreground border border-border/40 opacity-50 cursor-not-allowed"
+            }`}
+            title="Vaporize lowest imminent threat packet without shield penalty (Tab key)"
+          >
+            <Zap
+              className={`h-3.5 w-3.5 ${
+                empCharges > 0 && gameStatus === "playing" ? "text-primary animate-pulse" : ""
+              }`}
+            />
+            <span>[TAB] EMP BLAST ({empCharges})</span>
+          </button>
+
           <button
             onClick={() => {
               if (inputRef.current) inputRef.current.focus();

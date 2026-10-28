@@ -9,6 +9,7 @@ import {
   Calculator,
   Award,
   Shield,
+  Zap,
 } from "lucide-react";
 
 export function HowToPlayModal() {
@@ -171,7 +172,26 @@ export function HowToPlayModal() {
             </div>
           </div>
 
-          {/* 5. Data Science Note */}
+          {/* 5. Tactical EMP Blast */}
+          <div className="p-4 rounded-xl bg-secondary/30 border border-border/80">
+            <h3 className="font-display font-bold text-primary text-base flex items-center gap-2 mb-2">
+              <Zap className="h-4 w-4" />
+              5. Tactical EMP Blast ([TAB] Key or Button)
+            </h3>
+            <p className="text-muted-foreground text-xs leading-relaxed mb-2">
+              You start every run with <strong>1 Tactical EMP Blast</strong>. Press <kbd className="px-1.5 py-0.5 rounded bg-black/60 border border-border text-primary font-mono text-[10px]">TAB</kbd> or click the EMP button to vaporize the lowest packet before it breaches your firewall line.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-mono">
+              <div className="p-2.5 rounded bg-primary/10 border border-primary/30 text-primary">
+                🛡️ <strong>Preserves Shields:</strong> Defuses imminent threat with zero shield loss & gives +50% PTS!
+              </div>
+              <div className="p-2.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-400">
+                ⚡ <strong>Recharge:</strong> Earn +1 EMP charge whenever you hit a <strong>10x Streak Combo</strong>!
+              </div>
+            </div>
+          </div>
+
+          {/* 6. Data Science Note */}
           <div className="p-3.5 rounded-xl bg-primary/5 border border-primary/20 text-xs">
             <div className="font-mono font-bold text-primary mb-1">
               DATA SCIENCE METRIC // EXPECTED VALUE (EV)
