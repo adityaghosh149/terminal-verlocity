@@ -147,34 +147,34 @@ export class ProbabilityEngine {
     const config = {
       easy: {
         words: EASY_WORDS,
-        pMin: 0.05,
-        pMax: 0.40,
+        pMin: 0.08,
+        pMax: 0.30,
         rewardMin: 50,
-        rewardMax: 120,
+        rewardMax: 80,
         penaltyRatioMin: 0.3,
-        penaltyRatioMax: 0.6,
+        penaltyRatioMax: 0.5,
         durationSeconds: 11,
         speed: 48,
       },
       medium: {
         words: MEDIUM_WORDS,
-        pMin: 0.10,
-        pMax: 0.65,
-        rewardMin: 100,
-        rewardMax: 240,
-        penaltyRatioMin: 0.5,
-        penaltyRatioMax: 0.9,
+        pMin: 0.12,
+        pMax: 0.50,
+        rewardMin: 90,
+        rewardMax: 160,
+        penaltyRatioMin: 0.4,
+        penaltyRatioMax: 0.7,
         durationSeconds: 8.5,
         speed: 68,
       },
       hard: {
         words: HARD_WORDS,
         pMin: 0.15,
-        pMax: 0.85,
-        rewardMin: 180,
-        rewardMax: 450,
-        penaltyRatioMin: 0.7,
-        penaltyRatioMax: 1.4,
+        pMax: 0.65,
+        rewardMin: 160,
+        rewardMax: 260,
+        penaltyRatioMin: 0.5,
+        penaltyRatioMax: 0.9,
         durationSeconds: 6.5,
         speed: 92,
       },
@@ -199,6 +199,10 @@ export class ProbabilityEngine {
     const riskRating = this.getRiskRating(corruptionProbability);
     const valuePerSecond = this.calculateValuePerSecond(expectedValue, code.length);
 
+    // Add small natural variance (-0.6s to +0.6s) so multiple packets never expire on the exact same millisecond
+    const durationVariance = Number(rng.nextFloat(-0.6, 0.6).toFixed(1));
+    const packetDuration = Math.max(4.5, Number((config.durationSeconds + durationVariance).toFixed(1)));
+
     return {
       id,
       code,
@@ -207,7 +211,7 @@ export class ProbabilityEngine {
       corruptionPenalty,
       interceptionCost,
       expectedValue,
-      durationSeconds: config.durationSeconds,
+      durationSeconds: packetDuration,
       speed: config.speed,
       riskRating,
       valuePerSecond,

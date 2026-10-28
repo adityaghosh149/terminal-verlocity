@@ -224,3 +224,27 @@ body {
 .glow-danger {
   box-shadow: 0 0 20px -3px rgba(244, 63, 94, 0.4);
 }
+
+/* Screen shake for missed packets or corrupted hits */
+@keyframes screen-shake {
+  0%, 100% { transform: translate(0, 0); }
+  20% { transform: translate(-5px, 3px); }
+  40% { transform: translate(5px, -3px); }
+  60% { transform: translate(-4px, 2px); }
+  80% { transform: translate(4px, -1px); }
+}
+
+.animate-shake {
+  animation: screen-shake 0.25s ease-in-out;
+}
+
+@keyframes float-up {
+  0% { opacity: 0; transform: translate(-50%, 0) scale(0.85); }
+  15% { opacity: 1; transform: translate(-50%, -10px) scale(1.05); }
+  80% { opacity: 1; transform: translate(-50%, -30px) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -45px) scale(0.9); }
+}
+
+.animate-float-feedback {
+  animation: float-up 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
