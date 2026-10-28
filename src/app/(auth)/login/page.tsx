@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Terminal, Shield, ArrowRight, AlertCircle, Loader2 } from "lucide-react";
+import { LogIn, ArrowRight, AlertCircle, Loader2 } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
 
 export default function LoginPage() {
@@ -37,7 +37,7 @@ export default function LoginPage() {
       setUser(data.user);
       router.push("/dashboard");
     } catch {
-      setError("Network error. Could not connect to authentication gateway.");
+      setError("Network error. Could not connect to authentication server.");
     } finally {
       setLoading(false);
     }
@@ -45,16 +45,16 @@ export default function LoginPage() {
 
   return (
     <div className="flex-1 flex items-center justify-center px-4 py-12">
-      <div className="w-full max-w-md rounded-xl border border-border/80 bg-card/80 backdrop-blur-md p-8 shadow-2xl">
+      <div className="w-full max-w-md rounded-xl border border-border/80 bg-card/85 backdrop-blur-md p-8 shadow-2xl font-sans">
         <div className="text-center mb-6">
-          <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/30 mb-3">
-            <Terminal className="h-6 w-6" />
+          <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/30 mb-3 glow-primary">
+            <LogIn className="h-6 w-6" />
           </div>
-          <h1 className="text-2xl font-bold font-mono text-foreground">
-            OPERATIVE ACCESS
+          <h1 className="text-2xl font-bold font-display text-foreground">
+            Sign In
           </h1>
           <p className="text-xs text-muted-foreground mt-1">
-            Sign in to synchronize progress, achievements, and leaderboard rankings
+            Welcome back! Sign in to access your saved progress and leaderboard ranks
           </p>
         </div>
 
@@ -67,8 +67,8 @@ export default function LoginPage() {
 
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
-            <label className="block text-xs font-mono text-muted-foreground mb-1">
-              EMAIL OR USERNAME
+            <label className="block text-xs font-semibold text-foreground mb-1">
+              Email or Username
             </label>
             <input
               type="text"
@@ -76,21 +76,21 @@ export default function LoginPage() {
               autoFocus
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
-              placeholder="e.g. cyber_operator or operator@domain.com"
+              placeholder="e.g. alex_runner or name@example.com"
               className="w-full rounded-md bg-secondary/60 border border-border px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary font-mono"
             />
           </div>
 
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="text-xs font-mono text-muted-foreground">
-                SECURITY PASSPHRASE
+              <label className="text-xs font-semibold text-foreground">
+                Password
               </label>
               <Link
                 href="/forgot-password"
                 className="text-xs text-primary hover:underline font-mono"
               >
-                Forgot key?
+                Forgot password?
               </Link>
             </div>
             <input
@@ -98,7 +98,7 @@ export default function LoginPage() {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter passphrase"
+              placeholder="Enter your password"
               className="w-full rounded-md bg-secondary/60 border border-border px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary font-mono"
             />
           </div>
@@ -106,25 +106,25 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full mt-6 flex items-center justify-center gap-2 rounded-md bg-primary py-2.5 text-sm font-bold text-primary-foreground hover:opacity-90 transition-opacity font-mono tracking-wider disabled:opacity-50"
+            className="w-full mt-6 flex items-center justify-center gap-2 rounded-md bg-primary py-2.5 text-sm font-bold font-display text-primary-foreground hover:opacity-90 transition-opacity tracking-wider disabled:opacity-50 glow-primary"
           >
             {loading ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                AUTHENTICATING...
+                Signing In...
               </>
             ) : (
               <>
-                SIGN IN
+                Sign In
                 <ArrowRight className="h-4 w-4" />
               </>
             )}
           </button>
 
           <div className="text-center text-xs text-muted-foreground mt-4">
-            New operative?{" "}
+            New user?{" "}
             <Link href="/register" className="text-primary hover:underline font-semibold">
-              Register credentials here
+              Create an account
             </Link>
           </div>
         </form>

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Terminal, Shield, ArrowRight, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import { Shield, ArrowRight, CheckCircle2, AlertCircle, Loader2, UserPlus, Mail } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
 
 export default function RegisterPage() {
@@ -121,18 +121,18 @@ export default function RegisterPage() {
 
   return (
     <div className="flex-1 flex items-center justify-center px-4 py-12">
-      <div className="w-full max-w-md rounded-xl border border-border/80 bg-card/80 backdrop-blur-md p-8 shadow-2xl">
+      <div className="w-full max-w-md rounded-xl border border-border/80 bg-card/85 backdrop-blur-md p-8 shadow-2xl font-sans">
         <div className="text-center mb-6">
-          <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/30 mb-3">
-            <Shield className="h-6 w-6" />
+          <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/30 mb-3 glow-primary">
+            {step === "register" ? <UserPlus className="h-6 w-6" /> : <Mail className="h-6 w-6" />}
           </div>
-          <h1 className="text-2xl font-bold font-mono text-foreground">
-            {step === "register" ? "ENLIST OPERATIVE" : "IDENTITY CHALLENGE"}
+          <h1 className="text-2xl font-bold font-display text-foreground">
+            {step === "register" ? "Create an Account" : "Verify Your Email"}
           </h1>
           <p className="text-xs text-muted-foreground mt-1">
             {step === "register"
-              ? "Register credentials for persistent telemetry & global leaderboards"
-              : `Enter the 6-digit OTP transmission dispatched to ${email}`}
+              ? "Sign up to track your scores, unlock achievements, and compete on the global leaderboard"
+              : `Enter the 6-digit verification code sent to ${email}`}
           </p>
         </div>
 
@@ -146,71 +146,71 @@ export default function RegisterPage() {
         {step === "register" ? (
           <form onSubmit={handleRegister} className="space-y-4">
             <div>
-              <label className="block text-xs font-mono text-muted-foreground mb-1">
-                DISPLAY NAME
+              <label className="block text-xs font-semibold text-foreground mb-1">
+                Full Name
               </label>
               <input
                 type="text"
                 required
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
-                placeholder="e.g. Neo Velocity"
+                placeholder="e.g. Alex Johnson"
                 className="w-full rounded-md bg-secondary/60 border border-border px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-mono text-muted-foreground mb-1">
-                OPERATIVE HANDLE (USERNAME)
+              <label className="block text-xs font-semibold text-foreground mb-1">
+                Username
               </label>
               <input
                 type="text"
                 required
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="e.g. cyber_operator"
+                placeholder="e.g. alex_runner"
                 className="w-full rounded-md bg-secondary/60 border border-border px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary font-mono"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-mono text-muted-foreground mb-1">
-                COMMUNICATION CHANNEL (EMAIL)
+              <label className="block text-xs font-semibold text-foreground mb-1">
+                Email Address
               </label>
               <input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="operator@domain.com"
+                placeholder="name@example.com"
                 className="w-full rounded-md bg-secondary/60 border border-border px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-mono text-muted-foreground mb-1">
-                SECURITY PASSPHRASE
+              <label className="block text-xs font-semibold text-foreground mb-1">
+                Password
               </label>
               <input
                 type="password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Min. 8 chars, 1 uppercase, 1 number"
+                placeholder="Min. 8 characters, 1 uppercase, 1 number"
                 className="w-full rounded-md bg-secondary/60 border border-border px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary font-mono"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-mono text-muted-foreground mb-1">
-                CONFIRM PASSPHRASE
+              <label className="block text-xs font-semibold text-foreground mb-1">
+                Confirm Password
               </label>
               <input
                 type="password"
                 required
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Re-enter security passphrase"
+                placeholder="Re-enter your password"
                 className="w-full rounded-md bg-secondary/60 border border-border px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary font-mono"
               />
             </div>
@@ -218,33 +218,33 @@ export default function RegisterPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full mt-6 flex items-center justify-center gap-2 rounded-md bg-primary py-2.5 text-sm font-bold text-primary-foreground hover:opacity-90 transition-opacity font-mono tracking-wider disabled:opacity-50"
+              className="w-full mt-6 flex items-center justify-center gap-2 rounded-md bg-primary py-2.5 text-sm font-bold font-display text-primary-foreground hover:opacity-90 transition-opacity tracking-wider disabled:opacity-50 glow-primary"
             >
               {loading ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  INITIALIZING ENCRYPTION...
+                  Creating Account...
                 </>
               ) : (
                 <>
-                  INITIALIZE ACCOUNT
+                  Create Account
                   <ArrowRight className="h-4 w-4" />
                 </>
               )}
             </button>
 
             <div className="text-center text-xs text-muted-foreground mt-4">
-              Already enlisted?{" "}
+              Already have an account?{" "}
               <Link href="/login" className="text-primary hover:underline font-semibold">
-                Sign in here
+                Sign in
               </Link>
             </div>
           </form>
         ) : (
           <form onSubmit={handleVerifyOtp} className="space-y-6">
             <div>
-              <label className="block text-xs font-mono text-center text-muted-foreground mb-2">
-                6-DIGIT VERIFICATION CODE
+              <label className="block text-xs font-semibold text-center text-foreground mb-2">
+                6-Digit Verification Code
               </label>
               <input
                 type="text"
@@ -261,13 +261,13 @@ export default function RegisterPage() {
             <button
               type="submit"
               disabled={loading || otpCode.length < 6}
-              className="w-full flex items-center justify-center gap-2 rounded-md bg-primary py-2.5 text-sm font-bold text-primary-foreground hover:opacity-90 transition-opacity font-mono tracking-wider disabled:opacity-50"
+              className="w-full flex items-center justify-center gap-2 rounded-md bg-primary py-2.5 text-sm font-bold font-display text-primary-foreground hover:opacity-90 transition-opacity tracking-wider disabled:opacity-50 glow-primary"
             >
               {loading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <>
-                  VERIFY & ACTIVATE
+                  Verify Email
                   <CheckCircle2 className="h-4 w-4" />
                 </>
               )}

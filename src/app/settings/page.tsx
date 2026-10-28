@@ -13,6 +13,7 @@ import {
   CheckCircle2,
   AlertCircle,
   Loader2,
+  Check,
 } from "lucide-react";
 import { useGameStore } from "@/store/useGameStore";
 import { useAuthStore } from "@/store/useAuthStore";
@@ -57,12 +58,12 @@ export default function SettingsPage() {
   const [sessions, setSessions] = useState<AuthSession[]>([]);
   const [sessionsLoading, setSessionsLoading] = useState(false);
 
-  const themes: { id: Theme; label: string; desc: string }[] = [
-    { id: "midnight", label: "Midnight", desc: "Dark navy and electric cyan" },
-    { id: "cyberpunk", label: "Cyberpunk", desc: "Deep purple and neon magenta" },
-    { id: "terminal", label: "Terminal Green", desc: "Classic phosphor green on black" },
-    { id: "amber", label: "Amber Protocol", desc: "Warm charcoal and amber glow" },
-    { id: "light", label: "Light Mode", desc: "Clean modern surfaces with high contrast" },
+  const themes: { id: Theme; label: string; desc: string; color: string }[] = [
+    { id: "midnight", label: "Midnight", desc: "Dark navy and electric cyan", color: "#00f0ff" },
+    { id: "cyberpunk", label: "Cyberpunk", desc: "Deep purple and neon magenta", color: "#ff007f" },
+    { id: "terminal", label: "Terminal Green", desc: "Classic phosphor green on black", color: "#00ff66" },
+    { id: "amber", label: "Amber Protocol", desc: "Warm charcoal and amber glow", color: "#ffb703" },
+    { id: "light", label: "Light Mode", desc: "Clean modern surfaces with high contrast", color: "#0284c7" },
   ];
 
   const hudModes: { id: HudMode; label: string; desc: string }[] = [
@@ -129,7 +130,7 @@ export default function SettingsPage() {
     setPasswordMsg(null);
 
     if (newPassword !== confirmPassword) {
-      setPasswordMsg({ type: "error", text: "New passphrases do not match." });
+      setPasswordMsg({ type: "error", text: "New passwords do not match." });
       return;
     }
 
@@ -149,7 +150,7 @@ export default function SettingsPage() {
 
       setPasswordMsg({
         type: "success",
-        text: "Passphrase successfully updated! Other sessions revoked.",
+        text: "Password successfully updated! Other sessions signed out.",
       });
       setCurrentPassword("");
       setNewPassword("");
@@ -187,41 +188,51 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="container max-w-4xl px-4 py-8">
+    <div className="container max-w-4xl px-4 py-8 font-sans">
       {/* Header */}
       <div className="mb-8">
         <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/30 text-xs font-mono text-primary mb-2">
           <Settings className="h-3.5 w-3.5 text-primary" />
           SYSTEM CONFIGURATION
         </div>
-        <h1 className="text-3xl font-black font-mono tracking-tight text-foreground">
-          TERMINAL SETTINGS
+        <h1 className="text-3xl font-black font-display tracking-tight text-foreground">
+          Settings
         </h1>
         <p className="text-xs text-muted-foreground mt-1">
-          Configure visual themes, audio synthesis, HUD telemetry, and account security
+          Customize visual themes, audio effects, HUD information, and account security
         </p>
       </div>
 
       <div className="space-y-8">
         {/* Visual Theme Section */}
-        <section className="p-6 rounded-xl border border-border/80 bg-card/70 backdrop-blur-md shadow-xl">
-          <div className="flex items-center gap-2 text-sm font-bold font-mono text-foreground mb-4">
+        <section className="p-6 rounded-xl border border-border/80 bg-card/75 backdrop-blur-md shadow-xl">
+          <div className="flex items-center gap-2 text-sm font-bold font-display text-foreground mb-4">
             <Palette className="h-4 w-4 text-primary" />
-            INTERFACE THEME & CHROMATICS
+            Theme & Interface Style
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {themes.map((t) => (
               <button
                 key={t.id}
+                type="button"
                 onClick={() => setTheme(t.id)}
-                className={`p-3.5 rounded-lg border text-left transition-all font-mono ${
+                className={`p-3.5 rounded-lg border text-left transition-all ${
                   theme === t.id
-                    ? "border-primary bg-primary/10 text-primary ring-1 ring-primary"
+                    ? "border-primary bg-primary/10 text-primary ring-1 ring-primary shadow-sm"
                     : "border-border/60 bg-secondary/40 text-foreground hover:border-border"
                 }`}
               >
-                <div className="font-bold text-xs uppercase">{t.label}</div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 font-display font-bold text-xs uppercase">
+                    <span
+                      className="h-2.5 w-2.5 rounded-full shadow-sm"
+                      style={{ backgroundColor: t.color }}
+                    />
+                    {t.label}
+                  </div>
+                  {theme === t.id && <Check className="h-4 w-4 text-primary" />}
+                </div>
                 <div className="text-[11px] text-muted-foreground mt-1">{t.desc}</div>
               </button>
             ))}
@@ -229,24 +240,25 @@ export default function SettingsPage() {
         </section>
 
         {/* Telemetry & HUD Mode */}
-        <section className="p-6 rounded-xl border border-border/80 bg-card/70 backdrop-blur-md shadow-xl">
-          <div className="flex items-center gap-2 text-sm font-bold font-mono text-foreground mb-4">
+        <section className="p-6 rounded-xl border border-border/80 bg-card/75 backdrop-blur-md shadow-xl">
+          <div className="flex items-center gap-2 text-sm font-bold font-display text-foreground mb-4">
             <Sliders className="h-4 w-4 text-primary" />
-            HEADS-UP DISPLAY (HUD) INFORMATION LEVEL
+            HUD (Heads-Up Display) Level
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {hudModes.map((h) => (
               <button
                 key={h.id}
+                type="button"
                 onClick={() => setHudMode(h.id)}
-                className={`p-3.5 rounded-lg border text-left transition-all font-mono ${
+                className={`p-3.5 rounded-lg border text-left transition-all ${
                   hudMode === h.id
-                    ? "border-primary bg-primary/10 text-primary ring-1 ring-primary"
+                    ? "border-primary bg-primary/10 text-primary ring-1 ring-primary shadow-sm"
                     : "border-border/60 bg-secondary/40 text-foreground hover:border-border"
                 }`}
               >
-                <div className="font-bold text-xs uppercase">{h.label}</div>
+                <div className="font-display font-bold text-xs uppercase">{h.label}</div>
                 <div className="text-[11px] text-muted-foreground mt-1">{h.desc}</div>
               </button>
             ))}
@@ -254,10 +266,10 @@ export default function SettingsPage() {
         </section>
 
         {/* Audio Synthesis & Effects */}
-        <section className="p-6 rounded-xl border border-border/80 bg-card/70 backdrop-blur-md shadow-xl font-mono text-xs">
-          <div className="flex items-center gap-2 text-sm font-bold text-foreground mb-4">
+        <section className="p-6 rounded-xl border border-border/80 bg-card/75 backdrop-blur-md shadow-xl text-xs">
+          <div className="flex items-center gap-2 text-sm font-bold font-display text-foreground mb-4">
             <Volume2 className="h-4 w-4 text-primary" />
-            AUDIO SYNTHESIZER & IMMERSION
+            Sound & Haptic Effects
           </div>
 
           <div className="space-y-4">
@@ -265,7 +277,7 @@ export default function SettingsPage() {
               <div>
                 <span className="font-bold text-foreground block">Audio Synthesizer Engine</span>
                 <span className="text-muted-foreground text-[11px]">
-                  Zero-latency procedural Web Audio chimes, alarms, and glitch sound effects
+                  Real-time procedural Web Audio typing clicks, reward chimes, and glitch alerts
                 </span>
               </div>
               <input
@@ -278,8 +290,8 @@ export default function SettingsPage() {
 
             <div className="p-3 rounded-lg bg-secondary/30 border border-border/40">
               <div className="flex items-center justify-between mb-2">
-                <span className="font-bold text-foreground">Sound Effects Volume</span>
-                <span className="text-primary font-bold">{Math.round(sfxVolume * 100)}%</span>
+                <span className="font-bold text-foreground">Sound Volume</span>
+                <span className="text-primary font-bold font-mono">{Math.round(sfxVolume * 100)}%</span>
               </div>
               <input
                 type="range"
@@ -296,7 +308,7 @@ export default function SettingsPage() {
               <div>
                 <span className="font-bold text-foreground block">Screen Shake & CRT Scanlines</span>
                 <span className="text-muted-foreground text-[11px]">
-                  Impact vibrations on packet corruption and arcade CRT scanlines
+                  Impact effects on packet corruption and arcade CRT scanlines
                 </span>
               </div>
               <input
@@ -314,7 +326,7 @@ export default function SettingsPage() {
           {saveSuccess ? (
             <span className="text-xs font-mono text-emerald-400 flex items-center gap-1.5">
               <CheckCircle2 className="h-4 w-4" />
-              Settings successfully synchronized and saved.
+              Settings successfully saved and synchronized.
             </span>
           ) : (
             <span />
@@ -323,10 +335,10 @@ export default function SettingsPage() {
           <button
             onClick={handleSaveSettings}
             disabled={saveLoading}
-            className="flex items-center gap-2 bg-primary text-primary-foreground font-mono font-bold px-6 py-2.5 rounded-lg text-xs hover:opacity-90 transition-all glow-primary"
+            className="flex items-center gap-2 bg-primary text-primary-foreground font-display font-bold px-6 py-2.5 rounded-lg text-xs hover:opacity-90 transition-all glow-primary"
           >
             {saveLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-            PERSIST CONFIGURATION
+            Save Settings
           </button>
         </div>
 
@@ -334,10 +346,10 @@ export default function SettingsPage() {
         {isAuthenticated && (
           <>
             {/* Change Password */}
-            <section className="p-6 rounded-xl border border-border/80 bg-card/70 backdrop-blur-md shadow-xl">
-              <div className="flex items-center gap-2 text-sm font-bold font-mono text-foreground mb-4">
+            <section className="p-6 rounded-xl border border-border/80 bg-card/75 backdrop-blur-md shadow-xl">
+              <div className="flex items-center gap-2 text-sm font-bold font-display text-foreground mb-4">
                 <KeyRound className="h-4 w-4 text-primary" />
-                SECURITY & PASSPHRASE MANAGEMENT
+                Password Management
               </div>
 
               {passwordMsg && (
@@ -359,8 +371,8 @@ export default function SettingsPage() {
 
               <form onSubmit={handleChangePassword} className="space-y-4 max-w-md">
                 <div>
-                  <label className="block text-xs font-mono text-muted-foreground mb-1">
-                    CURRENT PASSPHRASE
+                  <label className="block text-xs font-semibold text-foreground mb-1">
+                    Current Password
                   </label>
                   <input
                     type="password"
@@ -372,28 +384,29 @@ export default function SettingsPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-mono text-muted-foreground mb-1">
-                    NEW PASSPHRASE
+                  <label className="block text-xs font-semibold text-foreground mb-1">
+                    New Password
                   </label>
                   <input
                     type="password"
                     required
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Min. 8 chars, 1 uppercase, 1 number"
+                    placeholder="Min. 8 characters, 1 uppercase, 1 number"
                     className="w-full rounded-md bg-secondary/60 border border-border px-3 py-2 text-xs text-foreground font-mono focus:outline-none focus:ring-1 focus:ring-primary"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-mono text-muted-foreground mb-1">
-                    CONFIRM NEW PASSPHRASE
+                  <label className="block text-xs font-semibold text-foreground mb-1">
+                    Confirm New Password
                   </label>
                   <input
                     type="password"
                     required
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Re-enter your new password"
                     className="w-full rounded-md bg-secondary/60 border border-border px-3 py-2 text-xs text-foreground font-mono focus:outline-none focus:ring-1 focus:ring-primary"
                   />
                 </div>
@@ -401,27 +414,27 @@ export default function SettingsPage() {
                 <button
                   type="submit"
                   disabled={passwordLoading}
-                  className="flex items-center gap-2 bg-secondary hover:bg-secondary/80 text-foreground font-mono font-bold px-4 py-2 rounded-lg text-xs border border-border transition-colors disabled:opacity-50"
+                  className="flex items-center gap-2 bg-secondary hover:bg-secondary/80 text-foreground font-display font-bold px-4 py-2 rounded-lg text-xs border border-border transition-colors disabled:opacity-50"
                 >
                   {passwordLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-                  UPDATE PASSPHRASE
+                  Update Password
                 </button>
               </form>
             </section>
 
             {/* Active Sessions */}
-            <section className="p-6 rounded-xl border border-border/80 bg-card/70 backdrop-blur-md shadow-xl font-mono text-xs">
+            <section className="p-6 rounded-xl border border-border/80 bg-card/75 backdrop-blur-md shadow-xl text-xs">
               <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2 text-sm font-bold text-foreground">
+                <div className="flex items-center gap-2 text-sm font-bold font-display text-foreground">
                   <Laptop className="h-4 w-4 text-primary" />
-                  ACTIVE REFRESH SESSIONS
+                  Active Login Sessions
                 </div>
                 <button
                   onClick={handleRevokeAllSessions}
-                  className="text-destructive hover:underline text-xs flex items-center gap-1"
+                  className="text-destructive hover:underline text-xs flex items-center gap-1 font-mono"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
-                  Terminate All Sessions
+                  Sign Out of All Sessions
                 </button>
               </div>
 
@@ -429,7 +442,7 @@ export default function SettingsPage() {
                 {sessions.map((s) => (
                   <div
                     key={s.sessionId}
-                    className="flex items-center justify-between p-3 rounded-lg bg-secondary/30 border border-border/40"
+                    className="flex items-center justify-between p-3 rounded-lg bg-secondary/30 border border-border/40 font-mono"
                   >
                     <div>
                       <div className="font-bold text-foreground flex items-center gap-2">
@@ -450,7 +463,7 @@ export default function SettingsPage() {
                         onClick={() => handleRevokeSession(s.sessionId)}
                         className="text-xs text-muted-foreground hover:text-destructive px-2 py-1 rounded hover:bg-destructive/10"
                       >
-                        Revoke
+                        Sign Out
                       </button>
                     )}
                   </div>

@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useGameStore } from "@/store/useGameStore";
+import { ThemeSelector } from "@/components/ui/ThemeSelector";
 import { Theme } from "@/types";
 
 export function Navbar() {
@@ -89,19 +90,8 @@ export function Navbar() {
 
         {/* Right side: Themes & User Account */}
         <div className="flex items-center gap-3">
-          {/* Quick Theme Switcher */}
-          <select
-            value={theme}
-            onChange={(e) => setTheme(e.target.value as Theme)}
-            className="hidden sm:block text-xs bg-secondary/80 border border-border text-foreground rounded-md px-2.5 py-1.5 cursor-pointer hover:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary font-mono"
-            aria-label="Theme selector"
-          >
-            {themes.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.label}
-              </option>
-            ))}
-          </select>
+          {/* Custom Styled Theme Switcher */}
+          <ThemeSelector />
 
           {isAuthenticated && user ? (
             <div className="flex items-center gap-3">

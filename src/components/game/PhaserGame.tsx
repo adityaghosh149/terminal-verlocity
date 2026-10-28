@@ -23,7 +23,6 @@ import { useAuthStore } from "@/store/useAuthStore";
 import { ProbabilityEngine, SeededRandom } from "@/lib/probability/engine";
 import { soundEngine } from "@/lib/audio/soundEngine";
 import { PacketDefinition, PacketEvent, GameRunResult } from "@/types";
-import { HowToPlayModal } from "./HowToPlayModal";
 
 interface PhaserGameProps {
   mode: "classic" | "endless" | "daily";
@@ -524,9 +523,13 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
           </div>
         </div>
 
-        {/* Center: Rules Modal & HUD Mode */}
-        <div className="hidden md:flex items-center gap-3">
-          <HowToPlayModal />
+        {/* Center: Mode and Difficulty Telemetry */}
+        <div className="hidden md:flex items-center gap-2 font-mono text-xs text-muted-foreground">
+          <span className="text-primary font-bold">{mode.toUpperCase()}</span>
+          <span>//</span>
+          <span className="text-amber-400 font-bold">{difficulty.toUpperCase()}</span>
+          <span>//</span>
+          <span>HUD: {hudMode.toUpperCase()}</span>
         </div>
 
         {/* Right side: Timer & Sound toggle */}
@@ -594,14 +597,13 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
               Packets descend across 4 telemetry lanes. Type the first letter to acquire target lock. Clean payloads grant score & streak multipliers; corrupted payloads incur severe penalties!
             </p>
 
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+            <div className="mt-8 flex items-center justify-center">
               <button
                 onClick={initializeRun}
                 className="bg-primary text-primary-foreground font-display font-black px-8 py-3.5 rounded-lg text-sm hover:opacity-90 transition-all glow-primary tracking-widest"
               >
-                INITIALIZE INTERCEPTION [SPACE]
+                START INTERCEPTION [SPACE]
               </button>
-              <HowToPlayModal />
             </div>
           </div>
         )}

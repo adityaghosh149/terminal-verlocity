@@ -19,9 +19,6 @@ export class SeededRandom {
     }
   }
 
-  /**
-   * Returns a pseudo-random floating point number in [0, 1)
-   */
   next(): number {
     let t = (this.state += 0x6d2b79f5);
     t = Math.imul(t ^ (t >>> 15), t | 1);
@@ -29,23 +26,14 @@ export class SeededRandom {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   }
 
-  /**
-   * Returns a random integer in [min, max] inclusive
-   */
   nextInt(min: number, max: number): number {
     return Math.floor(this.next() * (max - min + 1)) + min;
   }
 
-  /**
-   * Returns a random float in [min, max)
-   */
   nextFloat(min: number, max: number): number {
     return min + this.next() * (max - min);
   }
 
-  /**
-   * Pick random element from an array
-   */
   pick<T>(array: readonly T[]): T {
     const idx = Math.floor(this.next() * array.length);
     return array[idx];
@@ -53,13 +41,54 @@ export class SeededRandom {
 }
 
 /**
+ * Comprehensive Word Dictionaries for Terminal Velocity
+ * Grouped strictly by difficulty character counts
+ */
+const EASY_WORDS = [
+  "BYTE", "CODE", "DATA", "ECHO", "FLOW", "GRID", "HASH", "NODE",
+  "PING", "ROOT", "SYNC", "WIFI", "LINK", "SCAN", "PORT", "BIOS",
+  "CORE", "HOST", "LOOP", "NULL", "RAMP", "SAFE", "TASK", "USER",
+  "WIRE", "ACID", "BEAM", "CHIP", "DOCK", "FIRE", "GATE", "ICON",
+  "JUMP", "LOCK", "MUTE", "PACK", "QUIT", "RACE", "SEND", "TRUE",
+  "VIEW", "ZERO", "BASE", "CLIK", "DISK", "EXEC", "FAST", "GEAR",
+  "HALT", "INFO", "JAVA", "KEYS", "LOAD", "MODE", "NANO", "OPEN",
+  "PAGE", "REST", "SLOT", "TEST", "UNIT", "VOID", "WARP", "ZONE",
+  "AUTO", "BOLD", "COLD", "DARK", "EDGE", "FILE", "GLOW", "HIDE"
+];
+
+const MEDIUM_WORDS = [
+  "CIPHER", "PACKET", "VECTOR", "KERNEL", "BINARY", "ROUTER",
+  "SHIELD", "MATRIX", "SIGNAL", "SOCKET", "DAEMON", "PARSER",
+  "THREAD", "BUFFER", "STREAM", "SYNTAX", "CRYPTO", "SERVER",
+  "ACCESS", "BACKUP", "CLIENT", "DOMAIN", "FILTER", "GLOBAL",
+  "HEADER", "MEMORY", "MODULE", "OBJECT", "OUTPUT", "RANDOM",
+  "RENDER", "SCRIPT", "SECURE", "SENSOR", "SOURCE", "STATUS",
+  "STRING", "SYSTEM", "TUNNEL", "UPLOAD", "VIRTUAL", "WIDGET",
+  "WORKER", "ACTION", "BRANCH", "BRIDGE", "BROKER", "BUNDLE",
+  "CACHED", "CONFIG", "CONNECT", "CONSOLE", "CURSOR", "DEVICE",
+  "DIRECT", "DRIVER", "ENGINE", "ENTROPY", "FORMAT", "HANDLE",
+  "IMPORT", "INJECT", "LAYOUT", "LINEAR", "LISTEN", "LOGICAL",
+  "LOOKUP", "NATIVE", "NETWORK", "OFFSET", "PACKER", "PREFIX"
+];
+
+const HARD_WORDS = [
+  "ALGORITHM", "BANDWIDTH", "BITSTREAM", "BLOCKCHAIN", "CORRUPTION",
+  "DECRYPTOR", "FIREWALL9", "HYPERTEXT", "INTERFACE", "PROTOCOLS",
+  "QUANTUM01", "OVERCLOCK", "SIGNATURE", "TERABYTE3", "ANOMALIES",
+  "MAINFRAME", "ENCRYPTION", "SUBROUTINE", "DATACENTER", "VULNERABLE",
+  "ASYNCHRONOUS", "MIDDLEWARE", "JAVASCRIPT", "KUBERNETES", "COMPRESSION",
+  "SERIALIZER", "CONTROLLER", "REPOSITORY", "PERMISSION", "CONNECTION",
+  "AUTHENTIC", "DISTRIBUTED", "TRANSACTION", "DEPENDENCY", "ARCHITECTURE",
+  "INVOCATION", "INTEGRATION", "CERTIFICATE", "CRYPTOGRAPHY", "PROBABILITY",
+  "BREAKPOINT", "DESTRUCTIVE", "INTERCEPTOR", "REDUNDANCY", "TELEMETRY",
+  "VALIDATION", "DELEGATION", "0xDEADBEEF", "0xCAFEBABE", "0xFEEDFACE",
+  "SIMULATION", "CONCURRENCY", "PERFORMANCE", "RECOGNITION", "COMPONENTS"
+];
+
+/**
  * Probability Engine - Authoritative mathematical calculations
  */
 export class ProbabilityEngine {
-  /**
-   * Authoritative Expected Value calculation:
-   * EV = (1 - p)*R - p*C - K
-   */
   static calculateExpectedValue(
     reward: number,
     corruptionProbability: number,
@@ -72,18 +101,12 @@ export class ProbabilityEngine {
     return Number(ev.toFixed(2));
   }
 
-  /**
-   * Validate probability is strictly bounded in [0, 1]
-   */
   static validateProbability(p: number): void {
     if (typeof p !== "number" || isNaN(p) || p < 0 || p > 1) {
       throw new Error(`Invalid probability: ${p}. Must be a float between 0 and 1.`);
     }
   }
 
-  /**
-   * Determine risk tier based on corruption probability
-   */
   static getRiskRating(p: number): "low" | "medium" | "high" | "critical" {
     if (p < 0.20) return "low";
     if (p < 0.45) return "medium";
@@ -91,34 +114,22 @@ export class ProbabilityEngine {
     return "critical";
   }
 
-  /**
-   * Estimate typing duration based on character length and average speed (60 WPM = 5 chars/sec)
-   */
   static estimateTypingDuration(codeLength: number, assumedWpm = 60): number {
     const charsPerSec = (assumedWpm * 5) / 60;
     return Math.max(0.5, Number((codeLength / charsPerSec).toFixed(2)));
   }
 
-  /**
-   * Calculate Expected Value Per Second (VPS)
-   */
   static calculateValuePerSecond(ev: number, codeLength: number, assumedWpm = 60): number {
     const duration = this.estimateTypingDuration(codeLength, assumedWpm);
     return Number((ev / duration).toFixed(2));
   }
 
-  /**
-   * Authoritative Packet Outcome Sampling:
-   * Clean with probability (1 - p), Corrupted with probability p.
-   * Outcome is ONLY sampled when interception occurs.
-   */
   static sampleOutcome(
     corruptionProbability: number,
     rng: SeededRandom | { next(): number } = { next: () => Math.random() }
   ): { outcome: "clean" | "corrupted"; roll: number } {
     this.validateProbability(corruptionProbability);
     const roll = rng.next();
-    // If roll is strictly less than corruptionProbability, it is corrupted
     const isCorrupted = roll < corruptionProbability;
     return {
       outcome: isCorrupted ? "corrupted" : "clean",
@@ -126,9 +137,6 @@ export class ProbabilityEngine {
     };
   }
 
-  /**
-   * Generate a packet definition adhering to difficulty profile
-   */
   static generatePacket(
     id: string,
     difficulty: Difficulty,
@@ -136,13 +144,9 @@ export class ProbabilityEngine {
     spawnTimeMs: number,
     laneIndex: number = 0
   ): PacketDefinition {
-    // Difficulty profiles
     const config = {
       easy: {
-        words: [
-          "BYTE", "CODE", "DATA", "ECHO", "FLOW", "GRID", "HASH", "NODE",
-          "PING", "ROOT", "SYNC", "WIFI", "LINK", "SCAN", "PORT", "BIOS"
-        ],
+        words: EASY_WORDS,
         pMin: 0.05,
         pMax: 0.40,
         rewardMin: 50,
@@ -153,11 +157,7 @@ export class ProbabilityEngine {
         speed: 48,
       },
       medium: {
-        words: [
-          "CIPHER", "PACKET", "VECTOR", "KERNEL", "BINARY", "ROUTER",
-          "SHIELD", "MATRIX", "SIGNAL", "SOCKET", "DAEMON", "PARSER",
-          "THREAD", "BUFFER", "STREAM", "SYNTAX", "CRYPTO", "SERVER"
-        ],
+        words: MEDIUM_WORDS,
         pMin: 0.10,
         pMax: 0.65,
         rewardMin: 100,
@@ -168,11 +168,7 @@ export class ProbabilityEngine {
         speed: 68,
       },
       hard: {
-        words: [
-          "0xDEADBEEF", "ALGORITHM", "BANDWIDTH", "BITSTREAM", "CORRUPTION",
-          "DECRYPTOR", "FIREWALL9", "HYPERTEXT", "INTERFACE", "PROTOCOLS",
-          "QUANTUM01", "OVERCLOCK", "SIGNATURE", "TERABYTE3", "ANOMALY99"
-        ],
+        words: HARD_WORDS,
         pMin: 0.15,
         pMax: 0.85,
         rewardMin: 180,
@@ -220,10 +216,6 @@ export class ProbabilityEngine {
     };
   }
 
-  /**
-   * Binned calibration analysis for Data Science charts.
-   * Compares theoretical corruption probability against empirical realized corruption rate.
-   */
   static computeCalibrationBins(
     events: PacketEvent[],
     binCount = 5
@@ -291,9 +283,6 @@ export class ProbabilityEngine {
     });
   }
 
-  /**
-   * Aggregate comprehensive Data Science metrics from a run
-   */
   static aggregateRunMetrics(events: PacketEvent[]) {
     const intercepted = events.filter((e) => e.action === "intercepted");
     const cleanPackets = intercepted.filter((e) => e.outcome === "clean");
@@ -312,10 +301,7 @@ export class ProbabilityEngine {
       0
     );
 
-    // Variance between actual result and expected value
     const evDiscrepancy = totalRealizedScore - totalExpectedValue;
-
-    // Decision Quality: Percentage of intercepted packets that had positive EV
     const positiveEvCount = intercepted.filter((e) => e.expectedValue > 0).length;
     const rationalDecisionIndex =
       intercepted.length > 0 ? (positiveEvCount / intercepted.length) * 100 : 100;

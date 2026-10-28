@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ShieldAlert, ArrowRight, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import { KeyRound, ArrowRight, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -39,16 +39,16 @@ export default function ForgotPasswordPage() {
 
   return (
     <div className="flex-1 flex items-center justify-center px-4 py-12">
-      <div className="w-full max-w-md rounded-xl border border-border/80 bg-card/80 backdrop-blur-md p-8 shadow-2xl">
+      <div className="w-full max-w-md rounded-xl border border-border/80 bg-card/85 backdrop-blur-md p-8 shadow-2xl font-sans">
         <div className="text-center mb-6">
           <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/30 mb-3">
-            <ShieldAlert className="h-6 w-6" />
+            <KeyRound className="h-6 w-6" />
           </div>
-          <h1 className="text-2xl font-bold font-mono text-foreground">
-            RECOVERY DISPATCH
+          <h1 className="text-2xl font-bold font-display text-foreground">
+            Forgot Password
           </h1>
           <p className="text-xs text-muted-foreground mt-1">
-            Request an authorized password reset challenge and recovery code
+            Enter your email address to receive a one-time password recovery code
           </p>
         </div>
 
@@ -65,21 +65,21 @@ export default function ForgotPasswordPage() {
               <CheckCircle2 className="h-10 w-10" />
             </div>
             <p className="text-sm text-foreground">
-              If an operative account exists for <span className="font-mono text-primary">{email}</span>, a cryptographic reset token and verification code has been dispatched.
+              If an account is registered with <span className="font-mono text-primary font-bold">{email}</span>, a password reset code has been sent.
             </p>
             <p className="text-xs text-muted-foreground">
-              Please inspect your email communication logs. The challenge code expires in 15 minutes.
+              Please check your inbox or spam folder. The code expires in 15 minutes.
             </p>
             <div className="pt-4 flex flex-col gap-2">
               <Link
                 href={`/reset-password?email=${encodeURIComponent(email)}`}
-                className="w-full rounded-md bg-primary py-2 text-xs font-bold text-primary-foreground hover:opacity-90 font-mono text-center"
+                className="w-full rounded-md bg-primary py-2 text-xs font-bold font-display text-primary-foreground hover:opacity-90 text-center glow-primary"
               >
-                PROCEED TO RESET SCREEN
+                PROCEED TO RESET PASSWORD
               </Link>
               <Link
                 href="/login"
-                className="text-xs text-muted-foreground hover:text-foreground text-center"
+                className="text-xs text-muted-foreground hover:text-foreground text-center mt-1"
               >
                 Back to Sign In
               </Link>
@@ -88,8 +88,8 @@ export default function ForgotPasswordPage() {
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-mono text-muted-foreground mb-1">
-                COMMUNICATION CHANNEL (EMAIL)
+              <label className="block text-xs font-semibold text-foreground mb-1">
+                Email Address
               </label>
               <input
                 type="email"
@@ -97,7 +97,7 @@ export default function ForgotPasswordPage() {
                 autoFocus
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="operator@domain.com"
+                placeholder="name@example.com"
                 className="w-full rounded-md bg-secondary/60 border border-border px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
               />
             </div>
@@ -105,23 +105,23 @@ export default function ForgotPasswordPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full mt-6 flex items-center justify-center gap-2 rounded-md bg-primary py-2.5 text-sm font-bold text-primary-foreground hover:opacity-90 transition-opacity font-mono tracking-wider disabled:opacity-50"
+              className="w-full mt-6 flex items-center justify-center gap-2 rounded-md bg-primary py-2.5 text-sm font-bold font-display text-primary-foreground hover:opacity-90 transition-opacity tracking-wider disabled:opacity-50 glow-primary"
             >
               {loading ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  DISPATCHING CHALLENGE...
+                  Sending Code...
                 </>
               ) : (
                 <>
-                  DISPATCH RECOVERY CODE
+                  Send Reset Code
                   <ArrowRight className="h-4 w-4" />
                 </>
               )}
             </button>
 
             <div className="text-center text-xs text-muted-foreground mt-4">
-              Remembered your credentials?{" "}
+              Remember your password?{" "}
               <Link href="/login" className="text-primary hover:underline font-semibold">
                 Sign in
               </Link>

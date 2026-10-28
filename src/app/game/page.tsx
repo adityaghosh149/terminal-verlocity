@@ -29,10 +29,16 @@ export default function GamePage() {
     { id: "daily", label: "DAILY CHALLENGE", desc: "Deterministic seed: identical packet sequence for all players globally" },
   ];
 
+  const hudModes: { id: HudMode; label: string; desc: string }[] = [
+    { id: "minimal", label: "MINIMAL", desc: "Reward & Risk only" },
+    { id: "standard", label: "STANDARD", desc: "Reward, Risk & Badges" },
+    { id: "analytical", label: "ANALYTICAL", desc: "Full EV & Value/Second telemetry" },
+  ];
+
   return (
-    <div className="container max-w-6xl px-4 py-8 flex flex-col items-center">
+    <div className="container max-w-6xl px-4 py-8 flex flex-col items-center font-sans">
       {/* Controls & Configuration Bar */}
-      <div className="w-full max-w-5xl mb-6 p-4 rounded-xl border border-border/80 bg-card/60 backdrop-blur-md flex flex-wrap items-center justify-between gap-4">
+      <div className="w-full max-w-5xl mb-6 p-4 rounded-xl border border-border/80 bg-card/75 backdrop-blur-md flex flex-wrap items-center justify-between gap-4">
         {/* Mode Selector */}
         <div className="flex items-center gap-2">
           <span className="text-xs font-mono text-muted-foreground uppercase flex items-center gap-1.5">
@@ -43,10 +49,11 @@ export default function GamePage() {
             {modes.map((m) => (
               <button
                 key={m.id}
+                type="button"
                 onClick={() => setMode(m.id)}
                 className={`px-3 py-1 rounded-md text-xs font-display font-bold transition-all ${
                   mode === m.id
-                    ? "bg-primary text-primary-foreground shadow-sm"
+                    ? "bg-primary text-primary-foreground shadow-sm glow-primary"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
                 title={m.desc}
@@ -67,15 +74,41 @@ export default function GamePage() {
             {difficulties.map((d) => (
               <button
                 key={d.id}
+                type="button"
                 onClick={() => setDifficulty(d.id)}
                 className={`px-3 py-1 rounded-md text-xs font-display font-bold transition-all ${
                   difficulty === d.id
-                    ? "bg-primary text-primary-foreground shadow-sm"
+                    ? "bg-primary text-primary-foreground shadow-sm glow-primary"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
                 title={d.desc}
               >
                 {d.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* HUD Mode Styled Selector */}
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-mono text-muted-foreground uppercase flex items-center gap-1.5">
+            <Sliders className="h-3.5 w-3.5 text-primary" />
+            HUD:
+          </span>
+          <div className="flex rounded-lg bg-secondary/80 p-0.5 border border-border">
+            {hudModes.map((h) => (
+              <button
+                key={h.id}
+                type="button"
+                onClick={() => setHudMode(h.id)}
+                className={`px-2.5 py-1 rounded-md text-xs font-display font-bold transition-all ${
+                  hudMode === h.id
+                    ? "bg-primary text-primary-foreground shadow-sm glow-primary"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                title={h.desc}
+              >
+                {h.label}
               </button>
             ))}
           </div>
@@ -94,12 +127,12 @@ export default function GamePage() {
         difficulty={difficulty}
       />
 
-      {/* Strategic Rule Box Under Arcade */}
+      {/* Strategic Directive Box Under Arcade */}
       <div className="w-full max-w-5xl mt-6 p-4 rounded-xl border border-border/60 bg-secondary/20 flex items-center justify-between gap-4 text-xs font-mono text-muted-foreground">
         <div className="flex items-center gap-2">
           <Info className="h-4 w-4 text-primary shrink-0" />
           <span>
-            <strong className="text-foreground">TACTICAL DIRECTIVE:</strong> Packets with negative EV are traps. Prioritize high-reward low-risk payloads (+EV) to build your combo multiplier without breaking shields.
+            <strong className="text-foreground">TACTICAL DIRECTIVE:</strong> Packets with negative EV are traps. Prioritize high-reward, low-risk payloads (+EV) to build your combo multiplier without breaking shields.
           </span>
         </div>
       </div>

@@ -134,19 +134,30 @@ export default function LeaderboardPage() {
             <Shield className="h-3.5 w-3.5 text-amber-400" />
             DIFFICULTY:
           </span>
-          <select
-            value={difficultyFilter}
-            onChange={(e) => {
-              setDifficultyFilter(e.target.value);
-              setPage(1);
-            }}
-            className="text-xs bg-secondary/80 border border-border text-foreground rounded-md px-3 py-1.5 cursor-pointer font-mono focus:outline-none focus:ring-1 focus:ring-primary"
-          >
-            <option value="all">All Difficulties</option>
-            <option value="easy">Easy</option>
-            <option value="medium">Medium</option>
-            <option value="hard">Hard</option>
-          </select>
+          <div className="flex rounded-lg bg-secondary/80 p-0.5 border border-border">
+            {[
+              { id: "all", label: "ALL" },
+              { id: "easy", label: "EASY" },
+              { id: "medium", label: "MEDIUM" },
+              { id: "hard", label: "HARD" },
+            ].map((d) => (
+              <button
+                key={d.id}
+                type="button"
+                onClick={() => {
+                  setDifficultyFilter(d.id);
+                  setPage(1);
+                }}
+                className={`px-3 py-1 rounded-md text-xs font-display font-bold transition-all ${
+                  difficultyFilter === d.id
+                    ? "bg-primary text-primary-foreground shadow-sm glow-primary"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {d.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 

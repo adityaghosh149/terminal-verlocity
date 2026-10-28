@@ -30,7 +30,7 @@ function ResetPasswordForm() {
     setError(null);
 
     if (newPassword !== confirmPassword) {
-      setError("Passphrases do not match.");
+      setError("Passwords do not match.");
       return;
     }
 
@@ -65,16 +65,16 @@ function ResetPasswordForm() {
   };
 
   return (
-    <div className="w-full max-w-md rounded-xl border border-border/80 bg-card/80 backdrop-blur-md p-8 shadow-2xl">
+    <div className="w-full max-w-md rounded-xl border border-border/80 bg-card/85 backdrop-blur-md p-8 shadow-2xl font-sans">
       <div className="text-center mb-6">
-        <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/30 mb-3">
+        <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/30 mb-3 glow-primary">
           <KeyRound className="h-6 w-6" />
         </div>
-        <h1 className="text-2xl font-bold font-mono text-foreground">
-          OVERWRITE PASSPHRASE
+        <h1 className="text-2xl font-bold font-display text-foreground">
+          Reset Password
         </h1>
         <p className="text-xs text-muted-foreground mt-1">
-          Provide the one-time recovery code or token and establish a new secure key
+          Enter your verification code and choose a new password
         </p>
       </div>
 
@@ -91,14 +91,14 @@ function ResetPasswordForm() {
             <CheckCircle2 className="h-10 w-10" />
           </div>
           <p className="text-sm text-foreground">
-            Passphrase successfully updated! All prior active sessions have been revoked.
+            Your password has been successfully updated! All active sessions have been signed out.
           </p>
           <p className="text-xs text-muted-foreground">
-            Redirecting to sign-in terminal in 3 seconds...
+            Redirecting you to sign in in 3 seconds...
           </p>
           <Link
             href="/login"
-            className="inline-block mt-4 rounded-md bg-primary px-4 py-2 text-xs font-bold text-primary-foreground font-mono"
+            className="inline-block mt-4 rounded-md bg-primary px-5 py-2 text-xs font-bold font-display text-primary-foreground glow-primary"
           >
             Sign In Now
           </Link>
@@ -106,57 +106,57 @@ function ResetPasswordForm() {
       ) : (
         <form onSubmit={handleReset} className="space-y-4">
           <div>
-            <label className="block text-xs font-mono text-muted-foreground mb-1">
-              COMMUNICATION CHANNEL (EMAIL)
+            <label className="block text-xs font-semibold text-foreground mb-1">
+              Email Address
             </label>
             <input
               type="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="operator@domain.com"
+              placeholder="name@example.com"
               className="w-full rounded-md bg-secondary/60 border border-border px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-mono text-muted-foreground mb-1">
-              RECOVERY OTP OR RESET TOKEN
+            <label className="block text-xs font-semibold text-foreground mb-1">
+              Verification Code / Token
             </label>
             <input
               type="text"
               required
               value={codeOrToken}
               onChange={(e) => setCodeOrToken(e.target.value)}
-              placeholder="6-digit code or hex reset token"
+              placeholder="Enter 6-digit code or reset token"
               className="w-full rounded-md bg-secondary/60 border border-border px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary font-mono"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-mono text-muted-foreground mb-1">
-              NEW PASSPHRASE
+            <label className="block text-xs font-semibold text-foreground mb-1">
+              New Password
             </label>
             <input
               type="password"
               required
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="Min. 8 chars, 1 uppercase, 1 number"
+              placeholder="Min. 8 characters, 1 uppercase, 1 number"
               className="w-full rounded-md bg-secondary/60 border border-border px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary font-mono"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-mono text-muted-foreground mb-1">
-              CONFIRM NEW PASSPHRASE
+            <label className="block text-xs font-semibold text-foreground mb-1">
+              Confirm New Password
             </label>
             <input
               type="password"
               required
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Re-enter new passphrase"
+              placeholder="Re-enter your new password"
               className="w-full rounded-md bg-secondary/60 border border-border px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary font-mono"
             />
           </div>
@@ -164,16 +164,16 @@ function ResetPasswordForm() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full mt-6 flex items-center justify-center gap-2 rounded-md bg-primary py-2.5 text-sm font-bold text-primary-foreground hover:opacity-90 transition-opacity font-mono tracking-wider disabled:opacity-50"
+            className="w-full mt-6 flex items-center justify-center gap-2 rounded-md bg-primary py-2.5 text-sm font-bold font-display text-primary-foreground hover:opacity-90 transition-opacity tracking-wider disabled:opacity-50 glow-primary"
           >
             {loading ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                UPDATING PASSPHRASE...
+                Updating Password...
               </>
             ) : (
               <>
-                CONFIRM NEW PASSPHRASE
+                Update Password
                 <ArrowRight className="h-4 w-4" />
               </>
             )}
@@ -187,7 +187,7 @@ function ResetPasswordForm() {
 export default function ResetPasswordPage() {
   return (
     <div className="flex-1 flex items-center justify-center px-4 py-12">
-      <Suspense fallback={<div className="text-center font-mono text-xs text-muted-foreground">Loading recovery parameters...</div>}>
+      <Suspense fallback={<div className="text-center font-mono text-xs text-muted-foreground">Loading...</div>}>
         <ResetPasswordForm />
       </Suspense>
     </div>
