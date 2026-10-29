@@ -39,10 +39,22 @@ export const inMemoryStore = {
   findRun(runId: string): StoredRun | undefined {
     return global.inMemoryGameRuns!.find((r) => r.runId === runId);
   },
-  getRuns(filter?: { mode?: string; difficulty?: string; username?: string }): StoredRun[] {
+  getRuns(filter?: {
+    mode?: string;
+    difficulty?: string;
+    username?: string;
+    seed?: string;
+    excludeMode?: string;
+  }): StoredRun[] {
     let result = [...global.inMemoryGameRuns!];
+    if (filter?.seed) {
+      result = result.filter((r) => r.seed === filter.seed);
+    }
     if (filter?.mode && filter.mode !== "all") {
       result = result.filter((r) => r.mode === filter.mode);
+    }
+    if (filter?.excludeMode) {
+      result = result.filter((r) => r.mode !== filter.excludeMode);
     }
     if (filter?.difficulty && filter.difficulty !== "all") {
       result = result.filter((r) => r.difficulty === filter.difficulty);

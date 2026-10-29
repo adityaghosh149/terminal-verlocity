@@ -8,64 +8,163 @@ export const dynamic = "force-dynamic";
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
+    const boardType = searchParams.get("type") || "all-time"; // "all-time" | "daily"
     const mode = searchParams.get("mode") || "all";
     const difficulty = searchParams.get("difficulty") || "all";
     const usernameParam = searchParams.get("username")?.trim().toUpperCase();
     const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
-    const limit = Math.min(50, Math.max(1, parseInt(searchParams.get("limit") || "20", 10)));
+    const limit = Math.min(50, Math.max(1, parseInt(searchParams.get("limit") || "15", 10)));
     const skip = (page - 1) * limit;
 
     const db = await connectToDatabase();
 
+    // Calculate Today's Daily Directive Parameters
+    const now = new Date();
+    const todayDate = now.toISOString().slice(0, 10); // YYYY-MM-DD
+    const todaySeed = `challenge_${todayDate}`;
+    const nextResetUtc = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0)
+    );
+    const msUntilReset = Math.max(0, nextResetUtc.getTime() - now.getTime());
+
     let rawRuns: any[] = [];
     let totalCount = 0;
 
-    if (db) {
-      const filter: Record<string, any> = { status: "validated" };
-      if (mode !== "all") filter.mode = mode;
-      if (difficulty !== "all") filter.difficulty = difficulty;
+    if (boardType === "daily") {
+      // 1. Scoped specifically to TODAY'S Synchronized Challenge Seed
+      if (db) {
+        const filter: Record<string, any> = {
+          status: "validated",
+          seed: todaySeed,
+        };
+        if (difficulty !== "all") filter.difficulty = difficulty;
 
-      const [runs, count] = await Promise.all([
-        GameRun.find(filter)
-          .sort({ finalScore: -1, accuracy: -1, createdAt: -1 })
-          .skip(skip)
-          .limit(limit)
-          .lean(),
-        GameRun.countDocuments(filter),
-      ]);
-      rawRuns = runs;
-      totalCount = count;
+        const [runs, count] = await Promise.all([
+          GameRun.find(filter)
+            .sort({ finalScore: -1, accuracy: -1, createdAt: -1 })
+            .skip(skip)
+            .limit(limit)
+            .lean(),
+          GameRun.countDocuments(filter),
+        ]);
+        rawRuns = runs;
+        totalCount = count;
+      } else {
+        const filtered = inMemoryStore.getRuns({
+          seed: todaySeed,
+          difficulty,
+        });
+        totalCount = filtered.length;
+        rawRuns = filtered.slice(skip, skip + limit);
+      }
     } else {
-      const filtered = inMemoryStore.getRuns({ mode, difficulty });
-      totalCount = filtered.length;
-      rawRuns = filtered.slice(skip, skip + limit);
+      // 2. All-Time Arcade Hall of Fame (Classic & Endless)
+      if (db) {
+        const filter: Record<string, any> = { status: "validated" };
+        if (mode !== "all") {
+          filter.mode = mode;
+        } else {
+          // By default, keep all-time focused on arcade modes (classic & endless)
+          filter.mode = { $in: ["classic", "endless"] };
+        }
+        if (difficulty !== "all") filter.difficulty = difficulty;
+
+        const [runs, count] = await Promise.all([
+          GameRun.find(filter)
+            .sort({ finalScore: -1, accuracy: -1, createdAt: -1 })
+            .skip(skip)
+            .limit(limit)
+            .lean(),
+          GameRun.countDocuments(filter),
+        ]);
+        rawRuns = runs;
+        totalCount = count;
+      } else {
+        const filtered = inMemoryStore.getRuns({
+          mode: mode === "all" ? undefined : mode,
+          excludeMode: mode === "all" ? "daily" : undefined,
+          difficulty,
+        });
+        totalCount = filtered.length;
+        rawRuns = filtered.slice(skip, skip + limit);
+      }
     }
 
+    // Determine current operative standing
     let myRank: number | null = null;
     let myBestScore: number | null = null;
 
     if (usernameParam) {
-      if (db) {
-        const filter: Record<string, any> = { status: "validated", username: usernameParam };
-        if (mode !== "all") filter.mode = mode;
-        if (difficulty !== "all") filter.difficulty = difficulty;
-
-        const bestUserRun = await GameRun.findOne(filter).sort({ finalScore: -1 });
-        if (bestUserRun) {
-          myBestScore = bestUserRun.finalScore;
-          const globalFilter: Record<string, any> = { status: "validated", finalScore: { $gt: bestUserRun.finalScore } };
-          if (mode !== "all") globalFilter.mode = mode;
-          if (difficulty !== "all") globalFilter.difficulty = difficulty;
-          const higherCount = await GameRun.countDocuments(globalFilter);
-          myRank = higherCount + 1;
+      if (boardType === "daily") {
+        if (db) {
+          const filter: Record<string, any> = {
+            status: "validated",
+            seed: todaySeed,
+            username: usernameParam,
+          };
+          if (difficulty !== "all") filter.difficulty = difficulty;
+          const bestRun = await GameRun.findOne(filter).sort({ finalScore: -1 });
+          if (bestRun) {
+            myBestScore = bestRun.finalScore;
+            const higherFilter: Record<string, any> = {
+              status: "validated",
+              seed: todaySeed,
+              finalScore: { $gt: bestRun.finalScore },
+            };
+            if (difficulty !== "all") higherFilter.difficulty = difficulty;
+            const higher = await GameRun.countDocuments(higherFilter);
+            myRank = higher + 1;
+          }
+        } else {
+          const userRuns = inMemoryStore.getRuns({
+            seed: todaySeed,
+            difficulty,
+            username: usernameParam,
+          });
+          if (userRuns.length > 0) {
+            myBestScore = userRuns[0].finalScore;
+            const allToday = inMemoryStore.getRuns({ seed: todaySeed, difficulty });
+            const higher = allToday.filter((r) => r.finalScore > myBestScore!).length;
+            myRank = higher + 1;
+          }
         }
       } else {
-        const userRuns = inMemoryStore.getRuns({ mode, difficulty, username: usernameParam });
-        if (userRuns.length > 0) {
-          myBestScore = userRuns[0].finalScore;
-          const allRuns = inMemoryStore.getRuns({ mode, difficulty });
-          const higherCount = allRuns.filter((r) => r.finalScore > myBestScore!).length;
-          myRank = higherCount + 1;
+        if (db) {
+          const filter: Record<string, any> = {
+            status: "validated",
+            username: usernameParam,
+            mode: mode !== "all" ? mode : { $in: ["classic", "endless"] },
+          };
+          if (difficulty !== "all") filter.difficulty = difficulty;
+          const bestRun = await GameRun.findOne(filter).sort({ finalScore: -1 });
+          if (bestRun) {
+            myBestScore = bestRun.finalScore;
+            const higherFilter: Record<string, any> = {
+              status: "validated",
+              mode: mode !== "all" ? mode : { $in: ["classic", "endless"] },
+              finalScore: { $gt: bestRun.finalScore },
+            };
+            if (difficulty !== "all") higherFilter.difficulty = difficulty;
+            const higher = await GameRun.countDocuments(higherFilter);
+            myRank = higher + 1;
+          }
+        } else {
+          const userRuns = inMemoryStore.getRuns({
+            mode: mode === "all" ? undefined : mode,
+            excludeMode: mode === "all" ? "daily" : undefined,
+            difficulty,
+            username: usernameParam,
+          });
+          if (userRuns.length > 0) {
+            myBestScore = userRuns[0].finalScore;
+            const allRuns = inMemoryStore.getRuns({
+              mode: mode === "all" ? undefined : mode,
+              excludeMode: mode === "all" ? "daily" : undefined,
+              difficulty,
+            });
+            const higher = allRuns.filter((r) => r.finalScore > myBestScore!).length;
+            myRank = higher + 1;
+          }
         }
       }
     }
@@ -97,6 +196,10 @@ export async function GET(req: NextRequest) {
       totalPages: Math.max(1, Math.ceil(totalCount / limit)),
       myRank,
       myBestScore,
+      boardType,
+      dailyDate: todayDate,
+      dailySeed: todaySeed,
+      msUntilReset,
     });
   } catch (err) {
     console.error("Leaderboard error:", err);
