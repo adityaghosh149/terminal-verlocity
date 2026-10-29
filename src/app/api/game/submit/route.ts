@@ -3,6 +3,7 @@ import { z } from "zod";
 import { jwtVerify } from "jose";
 import { connectToDatabase } from "@/lib/db/mongodb";
 import { GameRun } from "@/models/GameRun";
+import { inMemoryStore, StoredRun } from "@/lib/db/inMemoryStore";
 import { ProbabilityEngine } from "@/lib/probability/engine";
 import { PacketEvent } from "@/types";
 
@@ -53,15 +54,24 @@ export async function POST(req: NextRequest) {
       "OPERATIVE"
     ).trim().toUpperCase().slice(0, 15);
 
-    await connectToDatabase();
+    const db = await connectToDatabase();
 
     // 2. Check Idempotency: Prevent replay attacks
-    const existing = await GameRun.findOne({ runId });
-    if (existing) {
-      return NextResponse.json(
-        { error: "This game run has already been recorded and validated." },
-        { status: 409 }
-      );
+    if (db) {
+      const existing = await GameRun.findOne({ runId });
+      if (existing) {
+        return NextResponse.json(
+          { error: "This game run has already been recorded and validated." },
+          { status: 409 }
+        );
+      }
+    } else {
+      if (inMemoryStore.findRun(runId)) {
+        return NextResponse.json(
+          { error: "This game run has already been recorded and validated." },
+          { status: 409 }
+        );
+      }
     }
 
     // 3. Score & Duration Tampering Detection
@@ -94,8 +104,7 @@ export async function POST(req: NextRequest) {
     // Calculate aggregated probability metrics
     const metrics = ProbabilityEngine.aggregateRunMetrics(events as PacketEvent[]);
 
-    // 4. Save Game Run in MongoDB with operative session username
-    await GameRun.create({
+    const runRecord: StoredRun = {
       runId,
       username: operativeName,
       mode,
@@ -117,8 +126,18 @@ export async function POST(req: NextRequest) {
       maxCombo,
       status,
       validationReason,
-      events: events.slice(0, 150),
-    });
+      createdAt: new Date(),
+    };
+
+    // 4. Save Game Run in MongoDB (or fallback in-memory store)
+    if (db) {
+      await GameRun.create({
+        ...runRecord,
+        events: events.slice(0, 150),
+      });
+    } else {
+      inMemoryStore.addRun(runRecord);
+    }
 
     return NextResponse.json({
       success: true,

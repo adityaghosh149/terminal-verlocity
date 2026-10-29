@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/db/mongodb";
 import { GameRun } from "@/models/GameRun";
+import { inMemoryStore, StoredRun } from "@/lib/db/inMemoryStore";
 
 export const dynamic = "force-dynamic";
 
@@ -29,12 +30,18 @@ export async function GET(req: NextRequest) {
     }
 
     const username = rawUsername.trim().toUpperCase().slice(0, 15);
-    await connectToDatabase();
+    const db = await connectToDatabase();
 
-    const runs = await GameRun.find({ username, status: "validated" })
-      .sort({ createdAt: -1 })
-      .limit(20)
-      .lean();
+    let runs: (StoredRun | any)[] = [];
+
+    if (db) {
+      runs = await GameRun.find({ username, status: "validated" })
+        .sort({ createdAt: -1 })
+        .limit(20)
+        .lean();
+    } else {
+      runs = inMemoryStore.getRuns({ username }).slice(0, 20);
+    }
 
     if (runs.length === 0) {
       return NextResponse.json({
