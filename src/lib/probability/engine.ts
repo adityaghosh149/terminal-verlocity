@@ -142,28 +142,30 @@ export class ProbabilityEngine {
     difficulty: Difficulty,
     rng: SeededRandom,
     spawnTimeMs: number,
-    laneIndex: number = 0
+    laneIndex: number = 0,
+    excludeInitials: string[] = [],
+    forcedTier?: "safe" | "caution" | "danger"
   ): PacketDefinition {
     const config = {
       easy: {
         words: EASY_WORDS,
-        pMin: 0.08,
-        pMax: 0.30,
+        pMin: 0.10,
+        pMax: 0.25,
         rewardMin: 50,
         rewardMax: 80,
         penaltyRatioMin: 0.3,
-        penaltyRatioMax: 0.5,
+        penaltyRatioMax: 0.45,
         durationSeconds: 11,
         speed: 48,
       },
       medium: {
         words: MEDIUM_WORDS,
         pMin: 0.12,
-        pMax: 0.50,
+        pMax: 0.45,
         rewardMin: 90,
         rewardMax: 160,
         penaltyRatioMin: 0.4,
-        penaltyRatioMax: 0.7,
+        penaltyRatioMax: 0.65,
         durationSeconds: 8.5,
         speed: 68,
       },
@@ -174,19 +176,53 @@ export class ProbabilityEngine {
         rewardMin: 160,
         rewardMax: 260,
         penaltyRatioMin: 0.5,
-        penaltyRatioMax: 0.9,
+        penaltyRatioMax: 0.85,
         durationSeconds: 6.5,
         speed: 92,
       },
     }[difficulty];
 
-    const code = rng.pick(config.words);
-    const corruptionProbability = Number(
-      rng.nextFloat(config.pMin, config.pMax).toFixed(2)
+    // Exclude starting letters that are already active on screen to prevent first-letter conflicts
+    const upperExclude = excludeInitials.map((c) => c.toUpperCase());
+    const availableWords = config.words.filter(
+      (w) => !upperExclude.includes(w.charAt(0).toUpperCase())
     );
-    const reward = rng.nextInt(config.rewardMin, config.rewardMax);
-    const penaltyRatio = rng.nextFloat(config.penaltyRatioMin, config.penaltyRatioMax);
-    const corruptionPenalty = Math.round(reward * penaltyRatio);
+    const wordsPool = availableWords.length > 0 ? availableWords : config.words;
+    const code = rng.pick(wordsPool);
+
+    let corruptionProbability: number;
+    let reward: number;
+    let corruptionPenalty: number;
+
+    if (forcedTier === "safe") {
+      corruptionProbability = Number(rng.nextFloat(0.10, 0.20).toFixed(2));
+      reward = rng.nextInt(config.rewardMin, Math.round(config.rewardMin + (config.rewardMax - config.rewardMin) * 0.35));
+      corruptionPenalty = Math.round(reward * 0.35);
+    } else if (forcedTier === "caution") {
+      corruptionProbability = Number(rng.nextFloat(0.25, 0.40).toFixed(2));
+      reward = rng.nextInt(Math.round(config.rewardMin + (config.rewardMax - config.rewardMin) * 0.35), Math.round(config.rewardMin + (config.rewardMax - config.rewardMin) * 0.75));
+      corruptionPenalty = Math.round(reward * 0.50);
+    } else if (forcedTier === "danger") {
+      corruptionProbability = Number(rng.nextFloat(0.50, 0.65).toFixed(2));
+      reward = rng.nextInt(Math.round(config.rewardMin + (config.rewardMax - config.rewardMin) * 0.75), config.rewardMax);
+      corruptionPenalty = Math.round(reward * 0.70);
+    } else {
+      // Natural distribution: 55% Safe, 35% Caution, 10% Danger
+      const roll = rng.next();
+      if (roll < 0.55) {
+        corruptionProbability = Number(rng.nextFloat(config.pMin, Math.min(0.22, config.pMax)).toFixed(2));
+        reward = rng.nextInt(config.rewardMin, Math.round(config.rewardMin + (config.rewardMax - config.rewardMin) * 0.35));
+      } else if (roll < 0.90) {
+        corruptionProbability = Number(rng.nextFloat(0.25, Math.min(0.42, config.pMax)).toFixed(2));
+        reward = rng.nextInt(Math.round(config.rewardMin + (config.rewardMax - config.rewardMin) * 0.35), Math.round(config.rewardMin + (config.rewardMax - config.rewardMin) * 0.75));
+      } else {
+        corruptionProbability = Number(rng.nextFloat(0.50, config.pMax).toFixed(2));
+        reward = rng.nextInt(Math.round(config.rewardMin + (config.rewardMax - config.rewardMin) * 0.75), config.rewardMax);
+      }
+      const penaltyRatio = rng.nextFloat(config.penaltyRatioMin, config.penaltyRatioMax);
+      corruptionPenalty = Math.round(reward * penaltyRatio);
+    }
+
     const interceptionCost = 0;
 
     const expectedValue = this.calculateExpectedValue(

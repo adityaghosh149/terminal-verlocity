@@ -248,16 +248,21 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
       const rng = new SeededRandom(data.seed);
       const now = Date.now();
 
-      // Immediately generate an initial wave of 3 packets across lanes 0, 1, 2
+      // Immediately generate an initial wave with guaranteed safe starter and unique initial letters
       const initialPackets: PacketDefinition[] = [];
       const waveCount = difficulty === "easy" ? 2 : difficulty === "medium" ? 3 : 4;
       for (let i = 0; i < waveCount; i++) {
+        const usedInitials = initialPackets.map((p) => p.code.charAt(0));
+        // Guarantee packet 0 is 100% Safe (0 shield risk), and subsequent packets safe/caution
+        const forcedTier = i === 0 ? "safe" : i === 1 ? "caution" : undefined;
         const pkt = ProbabilityEngine.generatePacket(
           `pkt_${i + 1}`,
           difficulty,
           rng,
           now - i * 400,
-          i % 4
+          i % 4,
+          usedInitials,
+          forcedTier
         );
         // Stagger initial progress slightly for natural flow
         pkt.durationSeconds -= i * 0.8;
@@ -442,12 +447,30 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
           runDataRef.current.lastSpawnTime = now;
           runDataRef.current.packetCounter += 1;
           const lane = getOptimalLane(current);
+
+          // Unique initial letters: prevent two words starting with the same letter from spawning
+          const activeInitials = current.map((p) => p.code.charAt(0));
+
+          // Guaranteed Safe Stream: ensure at least one 🟢 SAFE packet is ALWAYS active on screen!
+          const hasSafe = current.some((p) => p.corruptionProbability < 0.25);
+          const dangerCount = current.filter((p) => p.corruptionProbability >= 0.50).length;
+
+          let forcedTier: "safe" | "caution" | "danger" | undefined = undefined;
+          if (!hasSafe) {
+            forcedTier = "safe";
+          } else if (dangerCount >= 1) {
+            // Cap at 1 danger packet so player is never trapped with multiple high-risk words
+            forcedTier = runDataRef.current.rng.next() > 0.4 ? "safe" : "caution";
+          }
+
           const newPkt = ProbabilityEngine.generatePacket(
             `pkt_${runDataRef.current.packetCounter}`,
             difficulty,
             runDataRef.current.rng,
             now,
-            lane
+            lane,
+            activeInitials,
+            forcedTier
           );
           current.push(newPkt);
         }
@@ -559,98 +582,134 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
       }
 
       // If we already have a target, check next expected character
+      let resolvedTarget = target;
+      let nextInput = "";
+
       const expectedNext = target.code.charAt(curInput.length);
       if (upperChar === expectedNext) {
-        const nextInput = curInput + upperChar;
-        currentInputRef.current = nextInput;
-        setCurrentInput(nextInput);
-        runDataRef.current.keystrokesCorrect += 1;
-        setGridPulse(true);
-        setTimeout(() => setGridPulse(false), 90);
+        nextInput = curInput + upperChar;
+      } else {
+        // Disambiguation: check if typing matches another active packet starting with curInput + upperChar
+        const prefixAttempt = curInput + upperChar;
+        const alt = packets.find((p) => p.code.startsWith(prefixAttempt));
+        if (alt) {
+          resolvedTarget = alt;
+          activeTargetIdRef.current = alt.id;
+          setActiveTargetId(alt.id);
+          nextInput = prefixAttempt;
+        } else {
+          // Mistype on active target: reset current target focus
+          currentInputRef.current = "";
+          setCurrentInput("");
+          activeTargetIdRef.current = null;
+          setActiveTargetId(null);
+          return;
+        }
+      }
 
-        // Completed packet!
-        if (nextInput === target.code) {
-          // Resolve packet outcome strictly using probability model
-          const { outcome } = ProbabilityEngine.sampleOutcome(
-            target.corruptionProbability,
-            runDataRef.current.rng
-          );
+      currentInputRef.current = nextInput;
+      setCurrentInput(nextInput);
+      runDataRef.current.keystrokesCorrect += 1;
+      setGridPulse(true);
+      setTimeout(() => setGridPulse(false), 90);
 
-          let pointsDelta = 0;
-          const currentCombo = comboRef.current;
-          const comboMultiplier = getComboMultiplier(currentCombo);
+      // Completed packet!
+      if (nextInput === resolvedTarget.code) {
+        // Resolve packet outcome strictly using probability model
+        const { outcome } = ProbabilityEngine.sampleOutcome(
+          resolvedTarget.corruptionProbability,
+          runDataRef.current.rng
+        );
 
-          if (outcome === "clean") {
-            pointsDelta = target.reward * comboMultiplier;
-            soundEngine.playCleanInterception();
-            const nextCombo = currentCombo + 1;
-            comboRef.current = nextCombo;
-            setCombo(nextCombo);
-            if (nextCombo > maxComboRef.current) {
-              maxComboRef.current = nextCombo;
-              setMaxCombo(nextCombo);
-            }
-            if (nextCombo === 3 || nextCombo === 6 || nextCombo === 10) {
-              soundEngine.playComboUp(nextCombo);
-            }
-            if (nextCombo === 10) {
-              empChargesRef.current += 1;
-              setEmpCharges((c) => c + 1);
-              addFeedback("⚡ EMP RESTORED!", "clean", 1, 180);
-            }
-            addFeedback(`+${pointsDelta} PTS (${comboMultiplier}x)`, "clean", target.laneIndex, 250);
-          } else {
-            // Corrupted packet!
-            pointsDelta = -target.corruptionPenalty;
-            soundEngine.playCorruptedGlitch();
-            triggerShake();
-            comboRef.current = 0;
-            setCombo(0);
-            const nextLives = Math.max(0, livesRef.current - 1);
-            livesRef.current = nextLives;
-            setLives(nextLives);
-            addFeedback(`${pointsDelta} PTS [-1 SHIELD]`, "corrupted", target.laneIndex, 250);
-            if (nextLives <= 0) {
-              handleGameOver(scoreRef.current + pointsDelta, maxComboRef.current);
+        let pointsDelta = 0;
+        const currentCombo = comboRef.current;
+        const comboMultiplier = getComboMultiplier(currentCombo);
+
+        if (outcome === "clean") {
+          pointsDelta = resolvedTarget.reward * comboMultiplier;
+          soundEngine.playCleanInterception();
+          const nextCombo = currentCombo + 1;
+          comboRef.current = nextCombo;
+          setCombo(nextCombo);
+          if (nextCombo > maxComboRef.current) {
+            maxComboRef.current = nextCombo;
+            setMaxCombo(nextCombo);
+          }
+          if (nextCombo === 3 || nextCombo === 6 || nextCombo === 10) {
+            soundEngine.playComboUp(nextCombo);
+          }
+          if (nextCombo === 10) {
+            empChargesRef.current += 1;
+            setEmpCharges((c) => c + 1);
+            addFeedback("⚡ EMP RESTORED!", "clean", 1, 180);
+          }
+          addFeedback(`+${pointsDelta} PTS (${comboMultiplier}x)`, "clean", resolvedTarget.laneIndex, 250);
+        } else {
+          // Corrupted packet!
+          pointsDelta = -resolvedTarget.corruptionPenalty;
+          soundEngine.playCorruptedGlitch();
+          triggerShake();
+          comboRef.current = 0;
+          setCombo(0);
+
+          // FAIR SHIELD RULE:
+          // 🟢 SAFE (< 0.25) and 🟡 CAUTION (0.25 - 0.49) packets NEVER COST A SHIELD on corruption!
+          // Only 🔴 DANGER (>= 0.50) packets carry a shield risk if corrupted.
+          const isDanger = resolvedTarget.corruptionProbability >= 0.50;
+          let lostShield = false;
+
+          if (isDanger) {
+            if (livesRef.current > 1) {
+              lostShield = true;
+              const nextLives = livesRef.current - 1;
+              livesRef.current = nextLives;
+              setLives(nextLives);
+            } else {
+              // Emergency Shield Deflection at 1 life: spares elimination, increases point penalty
+              pointsDelta = Math.round(pointsDelta * 1.5);
+              addFeedback("DEFLECTED! SHIELD SAVED", "corrupted", resolvedTarget.laneIndex, 220);
             }
           }
 
-          const newScore = Math.max(0, scoreRef.current + pointsDelta);
-          scoreRef.current = newScore;
-          setScore(newScore);
-
-          // Log packet event
-          runDataRef.current.events.push({
-            packetId: target.id,
-            code: target.code,
-            reward: target.reward,
-            corruptionProbability: target.corruptionProbability,
-            corruptionPenalty: target.corruptionPenalty,
-            expectedValue: target.expectedValue,
-            action: "intercepted",
-            outcome,
-            timestampMs: Date.now() - runDataRef.current.startTime,
-            pointsDelta,
-            wpm: 65,
-            accuracy: 96,
-          });
-
-          // Remove packet from active list
-          const remaining = packets.filter((p) => p.id !== target?.id);
-          activePacketsRef.current = remaining;
-          setActivePackets(remaining);
-
-          activeTargetIdRef.current = null;
-          setActiveTargetId(null);
-          currentInputRef.current = "";
-          setCurrentInput("");
+          if (lostShield) {
+            addFeedback(`${pointsDelta} PTS [-1 SHIELD]`, "corrupted", resolvedTarget.laneIndex, 250);
+            if (livesRef.current <= 0) {
+              handleGameOver(scoreRef.current + pointsDelta, maxComboRef.current);
+            }
+          } else {
+            addFeedback(`${pointsDelta} PTS [CORRUPTED]`, "corrupted", resolvedTarget.laneIndex, 250);
+          }
         }
-      } else {
-        // Mistype on active target: reset current target focus
-        currentInputRef.current = "";
-        setCurrentInput("");
+
+        const newScore = Math.max(0, scoreRef.current + pointsDelta);
+        scoreRef.current = newScore;
+        setScore(newScore);
+
+        // Log packet event
+        runDataRef.current.events.push({
+          packetId: resolvedTarget.id,
+          code: resolvedTarget.code,
+          reward: resolvedTarget.reward,
+          corruptionProbability: resolvedTarget.corruptionProbability,
+          corruptionPenalty: resolvedTarget.corruptionPenalty,
+          expectedValue: resolvedTarget.expectedValue,
+          action: "intercepted",
+          outcome,
+          timestampMs: Date.now() - runDataRef.current.startTime,
+          pointsDelta,
+          wpm: 65,
+          accuracy: 96,
+        });
+
+        // Remove packet from active list
+        const remaining = packets.filter((p) => p.id !== resolvedTarget?.id);
+        activePacketsRef.current = remaining;
+        setActivePackets(remaining);
+
         activeTargetIdRef.current = null;
         setActiveTargetId(null);
+        currentInputRef.current = "";
+        setCurrentInput("");
       }
     },
     [addFeedback, handleGameOver, triggerShake]
@@ -1153,7 +1212,7 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
                 <div className="flex items-center justify-between text-[11px] mb-1 font-mono">
                   <span className="font-bold text-foreground font-display text-xs">+{pkt.reward} PTS</span>
                   <span
-                    className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                    className={`px-1.5 py-0.5 rounded text-[9.5px] font-bold ${
                       isSafe
                         ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40"
                         : isCaution
@@ -1161,7 +1220,11 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
                         : "bg-rose-500/20 text-rose-400 border border-rose-500/40"
                     }`}
                   >
-                    {isSafe ? "🟢 SAFE" : isCaution ? "🟡 RISKY" : "🔴 DANGER"} ({Math.round(pkt.corruptionProbability * 100)}%)
+                    {isSafe
+                      ? `🟢 SAFE [0 SHIELD RISK] ${Math.round(pkt.corruptionProbability * 100)}%`
+                      : isCaution
+                      ? `🟡 CAUTION [0 SHIELD RISK] ${Math.round(pkt.corruptionProbability * 100)}%`
+                      : `🔴 DANGER [SHIELD RISK] ${Math.round(pkt.corruptionProbability * 100)}%`}
                   </span>
                 </div>
 
@@ -1170,6 +1233,15 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
                   {isTarget ? (
                     <span>
                       <span className="text-primary glow-text font-black">
+                        {pkt.code.slice(0, currentInput.length)}
+                      </span>
+                      <span className="text-foreground">
+                        {pkt.code.slice(currentInput.length)}
+                      </span>
+                    </span>
+                  ) : currentInput.length > 0 && pkt.code.startsWith(currentInput) ? (
+                    <span>
+                      <span className="text-amber-400 font-bold">
                         {pkt.code.slice(0, currentInput.length)}
                       </span>
                       <span className="text-foreground">

@@ -75,14 +75,14 @@ export function HowToPlayModal() {
           <div className="p-4 rounded-xl bg-secondary/30 border border-border/80">
             <h3 className="font-display font-bold text-foreground text-base flex items-center gap-2 mb-2">
               <Target className="h-4 w-4 text-primary" />
-              1. Type Words Before They Disappear
+              1. Type Words Before They Disappear (Smart Targeting)
             </h3>
             <p className="text-muted-foreground text-xs leading-relaxed">
-              Words descend across 4 lanes. Type the first letter on your keyboard to lock target, then type the rest of the word to capture it.
+              Words descend across 4 lanes. Type the letters on your keyboard to lock target. If multiple words share a prefix, the game automatically routes to your intended word as you type, or you can click any word to force lock.
             </p>
             <div className="mt-2.5 p-2.5 rounded bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-mono font-bold flex items-center gap-2">
               <Shield className="h-4 w-4 shrink-0" />
-              <span>CRITICAL: If a packet reaches the bottom without being typed, it disappears and you LOSE 1 SHIELD!</span>
+              <span>CRITICAL: If a packet reaches the bottom defense line without being typed, it breaches your firewall: -1 SHIELD!</span>
             </div>
           </div>
 
@@ -93,15 +93,15 @@ export function HowToPlayModal() {
               2. Three Simple Color Tiers (Risk vs. Reward)
             </h3>
             <p className="text-muted-foreground text-xs leading-relaxed mb-3">
-              Every packet has a clear color showing its corruption probability. Clean payloads give points; corrupted payloads cost points and a shield!
+              Every packet displays its corruption risk. To prevent unfair traps, 🟢 Safe and 🟡 Caution packets NEVER risk your shields!
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs font-mono">
               <div className="p-3 rounded-lg bg-emerald-950/20 border border-emerald-500/40">
                 <div className="text-emerald-400 font-black text-sm">🟢 SAFE</div>
                 <div className="text-muted-foreground mt-1 text-[11px] space-y-1">
                   <div>• Risk: <strong>10% – 20%</strong></div>
-                  <div>• Reward: <strong>+50 to +70 PTS</strong></div>
-                  <div className="text-emerald-400 font-bold pt-1">Safe steady points</div>
+                  <div>• Reward: <strong>+50 to +75 PTS</strong></div>
+                  <div className="text-emerald-400 font-bold pt-1">🛡️ 0 SHIELD RISK</div>
                 </div>
               </div>
 
@@ -110,7 +110,7 @@ export function HowToPlayModal() {
                 <div className="text-muted-foreground mt-1 text-[11px] space-y-1">
                   <div>• Risk: <strong>25% – 40%</strong></div>
                   <div>• Reward: <strong>+100 to +140 PTS</strong></div>
-                  <div className="text-amber-400 font-bold pt-1">Balanced reward</div>
+                  <div className="text-amber-400 font-bold pt-1">🛡️ 0 SHIELD RISK</div>
                 </div>
               </div>
 
@@ -119,30 +119,30 @@ export function HowToPlayModal() {
                 <div className="text-muted-foreground mt-1 text-[11px] space-y-1">
                   <div>• Risk: <strong>50% – 65%</strong></div>
                   <div>• Reward: <strong>+180 to +250 PTS</strong></div>
-                  <div className="text-rose-400 font-bold pt-1">High-stakes jackpot</div>
+                  <div className="text-rose-400 font-bold pt-1">⚡ Jackpot gamble (-1 Shield)</div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* 3. Firewall Shields & Game Over */}
+          {/* 3. Firewall Shields & Guaranteed Escape */}
           <div className="p-4 rounded-xl bg-secondary/30 border border-border/80">
             <h3 className="font-display font-bold text-foreground text-base flex items-center gap-2 mb-2">
               <Shield className="h-4 w-4 text-primary" />
-              3. Firewall Integrity (3 Shields / Lives)
+              3. Guaranteed Escape & Firewall Shields (3 Lives)
             </h3>
             <div className="space-y-2 text-xs text-muted-foreground">
               <div className="flex items-center gap-2">
-                <span className="h-1.5 w-1.5 rounded-full bg-rose-500 shrink-0" />
-                <span><strong>-1 Shield:</strong> A packet hits the bottom line and disappears before you finish typing it.</span>
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shrink-0" />
+                <span><strong>Always Safe:</strong> The spawner GUARANTEES at least one 🟢 SAFE packet is active on screen at all times. You are never trapped!</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shrink-0" />
+                <span><strong>Typing Defends Shields:</strong> Intercepting 🟢 Safe or 🟡 Caution packets prevents firewall breach with ZERO shield risk.</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="h-1.5 w-1.5 rounded-full bg-rose-500 shrink-0" />
-                <span><strong>-1 Shield:</strong> A typed packet corrupts (based on its risk %).</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="h-1.5 w-1.5 rounded-full bg-rose-500 shrink-0" />
-                <span><strong>Game Over:</strong> When all 3 Shields are lost, the run ends immediately!</span>
+                <span><strong>-1 Shield:</strong> A packet breaches the bottom line, or you gamble on a corrupted 🔴 Danger packet.</span>
               </div>
             </div>
           </div>
