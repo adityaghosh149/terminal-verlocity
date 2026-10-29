@@ -1,0 +1,111 @@
+"use client";
+
+import React from "react";
+import { Medal, User, Loader2 } from "lucide-react";
+import { LeaderboardEntry } from "@/types";
+
+interface LeaderboardTableProps {
+  entries: LeaderboardEntry[];
+  loading: boolean;
+}
+
+export function LeaderboardTable({ entries, loading }: LeaderboardTableProps) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-left font-mono text-xs">
+        <thead className="border-b border-border/60 bg-secondary/40 text-muted-foreground">
+          <tr>
+            <th className="py-3.5 px-4 w-16">RANK</th>
+            <th className="py-3.5 px-4">OPERATIVE</th>
+            <th className="py-3.5 px-4">SCORE</th>
+            <th className="py-3.5 px-4">MODE</th>
+            <th className="py-3.5 px-4">DIFFICULTY</th>
+            <th className="py-3.5 px-4">SPEED</th>
+            <th className="py-3.5 px-4">ACCURACY</th>
+            <th className="py-3.5 px-4">PACKETS</th>
+            <th className="py-3.5 px-4">TIMESTAMP</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-border/40">
+          {loading ? (
+            <tr>
+              <td colSpan={9} className="py-12 text-center text-muted-foreground">
+                <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2 text-primary" />
+                Synchronizing telemetry records...
+              </td>
+            </tr>
+          ) : entries.length === 0 ? (
+            <tr>
+              <td colSpan={9} className="py-12 text-center text-muted-foreground">
+                No validated run records matching current filter criteria.
+              </td>
+            </tr>
+          ) : (
+            entries.map((entry) => {
+              const isTop3 = entry.rank <= 3;
+              const medalColor =
+                entry.rank === 1
+                  ? "text-amber-400"
+                  : entry.rank === 2
+                  ? "text-slate-300"
+                  : "text-amber-600";
+
+              return (
+                <tr key={entry.rank} className="hover:bg-secondary/30 transition-colors">
+                  <td className="py-3.5 px-4 font-bold flex items-center gap-1.5">
+                    {isTop3 ? (
+                      <Medal className={`h-4 w-4 ${medalColor}`} />
+                    ) : (
+                      <span className="text-muted-foreground">{entry.rank}</span>
+                    )}
+                  </td>
+                  <td className="py-3.5 px-4">
+                    <div className="flex items-center gap-2">
+                      <div className="h-6 w-6 rounded-full bg-secondary border border-border flex items-center justify-center text-[10px] text-primary">
+                        <User className="h-3.5 w-3.5" />
+                      </div>
+                      <div>
+                        <span className="font-bold text-foreground">{entry.displayName}</span>
+                        <span className="text-[10px] text-muted-foreground block -mt-0.5">
+                          @{entry.username}
+                        </span>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="py-3.5 px-4 font-black text-primary text-sm glow-text">
+                    {entry.score.toLocaleString()}
+                  </td>
+                  <td className="py-3.5 px-4 uppercase text-[11px] font-semibold text-muted-foreground">
+                    {entry.mode}
+                  </td>
+                  <td className="py-3.5 px-4">
+                    <span
+                      className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                        entry.difficulty === "easy"
+                          ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+                          : entry.difficulty === "medium"
+                          ? "bg-amber-500/15 text-amber-400 border border-amber-500/30"
+                          : "bg-rose-500/15 text-rose-400 border border-rose-500/30"
+                      }`}
+                    >
+                      {entry.difficulty}
+                    </span>
+                  </td>
+                  <td className="py-3.5 px-4 text-foreground font-semibold">{entry.wpm} WPM</td>
+                  <td className="py-3.5 px-4 text-foreground font-semibold">{entry.accuracy}%</td>
+                  <td className="py-3.5 px-4 text-muted-foreground">
+                    <span className="text-emerald-400">{entry.cleanPackets}</span> /{" "}
+                    <span className="text-rose-400">{entry.corruptedPackets || 0}</span>
+                  </td>
+                  <td className="py-3.5 px-4 text-muted-foreground text-[11px]">
+                    {new Date(entry.date).toLocaleDateString()}
+                  </td>
+                </tr>
+              );
+            })
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}

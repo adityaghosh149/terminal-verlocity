@@ -1,89 +1,10 @@
 import { Difficulty, PacketDefinition, PacketOutcome, PacketEvent } from "@/types";
 
-/**
- * Seeded PRNG using the Mulberry32 algorithm.
- * Guarantees 100% deterministic packet sequences for Daily Challenges and tests.
- */
-export class SeededRandom {
-  private state: number;
+import { SeededRandom } from "./prng";
+import { EASY_WORDS, MEDIUM_WORDS, HARD_WORDS } from "./words";
 
-  constructor(seedStringOrNumber: string | number) {
-    if (typeof seedStringOrNumber === "number") {
-      this.state = seedStringOrNumber >>> 0;
-    } else {
-      let hash = 0;
-      for (let i = 0; i < seedStringOrNumber.length; i++) {
-        hash = (Math.imul(31, hash) + seedStringOrNumber.charCodeAt(i)) | 0;
-      }
-      this.state = hash >>> 0;
-    }
-  }
-
-  next(): number {
-    let t = (this.state += 0x6d2b79f5);
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  }
-
-  nextInt(min: number, max: number): number {
-    return Math.floor(this.next() * (max - min + 1)) + min;
-  }
-
-  nextFloat(min: number, max: number): number {
-    return min + this.next() * (max - min);
-  }
-
-  pick<T>(array: readonly T[]): T {
-    const idx = Math.floor(this.next() * array.length);
-    return array[idx];
-  }
-}
-
-/**
- * Comprehensive Word Dictionaries for Terminal Velocity
- * Grouped strictly by difficulty character counts
- */
-const EASY_WORDS = [
-  "BYTE", "CODE", "DATA", "ECHO", "FLOW", "GRID", "HASH", "NODE",
-  "PING", "ROOT", "SYNC", "WIFI", "LINK", "SCAN", "PORT", "BIOS",
-  "CORE", "HOST", "LOOP", "NULL", "RAMP", "SAFE", "TASK", "USER",
-  "WIRE", "ACID", "BEAM", "CHIP", "DOCK", "FIRE", "GATE", "ICON",
-  "JUMP", "LOCK", "MUTE", "PACK", "QUIT", "RACE", "SEND", "TRUE",
-  "VIEW", "ZERO", "BASE", "CLIK", "DISK", "EXEC", "FAST", "GEAR",
-  "HALT", "INFO", "JAVA", "KEYS", "LOAD", "MODE", "NANO", "OPEN",
-  "PAGE", "REST", "SLOT", "TEST", "UNIT", "VOID", "WARP", "ZONE",
-  "AUTO", "BOLD", "COLD", "DARK", "EDGE", "FILE", "GLOW", "HIDE"
-];
-
-const MEDIUM_WORDS = [
-  "CIPHER", "PACKET", "VECTOR", "KERNEL", "BINARY", "ROUTER",
-  "SHIELD", "MATRIX", "SIGNAL", "SOCKET", "DAEMON", "PARSER",
-  "THREAD", "BUFFER", "STREAM", "SYNTAX", "CRYPTO", "SERVER",
-  "ACCESS", "BACKUP", "CLIENT", "DOMAIN", "FILTER", "GLOBAL",
-  "HEADER", "MEMORY", "MODULE", "OBJECT", "OUTPUT", "RANDOM",
-  "RENDER", "SCRIPT", "SECURE", "SENSOR", "SOURCE", "STATUS",
-  "STRING", "SYSTEM", "TUNNEL", "UPLOAD", "VIRTUAL", "WIDGET",
-  "WORKER", "ACTION", "BRANCH", "BRIDGE", "BROKER", "BUNDLE",
-  "CACHED", "CONFIG", "CONNECT", "CONSOLE", "CURSOR", "DEVICE",
-  "DIRECT", "DRIVER", "ENGINE", "ENTROPY", "FORMAT", "HANDLE",
-  "IMPORT", "INJECT", "LAYOUT", "LINEAR", "LISTEN", "LOGICAL",
-  "LOOKUP", "NATIVE", "NETWORK", "OFFSET", "PACKER", "PREFIX"
-];
-
-const HARD_WORDS = [
-  "ALGORITHM", "BANDWIDTH", "BITSTREAM", "BLOCKCHAIN", "CORRUPTION",
-  "DECRYPTOR", "FIREWALL9", "HYPERTEXT", "INTERFACE", "PROTOCOLS",
-  "QUANTUM01", "OVERCLOCK", "SIGNATURE", "TERABYTE3", "ANOMALIES",
-  "MAINFRAME", "ENCRYPTION", "SUBROUTINE", "DATACENTER", "VULNERABLE",
-  "ASYNCHRONOUS", "MIDDLEWARE", "JAVASCRIPT", "KUBERNETES", "COMPRESSION",
-  "SERIALIZER", "CONTROLLER", "REPOSITORY", "PERMISSION", "CONNECTION",
-  "AUTHENTIC", "DISTRIBUTED", "TRANSACTION", "DEPENDENCY", "ARCHITECTURE",
-  "INVOCATION", "INTEGRATION", "CERTIFICATE", "CRYPTOGRAPHY", "PROBABILITY",
-  "BREAKPOINT", "DESTRUCTIVE", "INTERCEPTOR", "REDUNDANCY", "TELEMETRY",
-  "VALIDATION", "DELEGATION", "0xDEADBEEF", "0xCAFEBABE", "0xFEEDFACE",
-  "SIMULATION", "CONCURRENCY", "PERFORMANCE", "RECOGNITION", "COMPONENTS"
-];
+// Re-export for complete backward compatibility
+export { SeededRandom, EASY_WORDS, MEDIUM_WORDS, HARD_WORDS };
 
 /**
  * Probability Engine - Authoritative mathematical calculations

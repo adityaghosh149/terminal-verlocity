@@ -2,57 +2,27 @@
 
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Shield,
-  Clock,
-  Zap,
-  Flame,
-  Volume2,
-  VolumeX,
-  RotateCcw,
-  BarChart2,
-  AlertTriangle,
-  Sparkles,
-  HelpCircle,
-  Skull,
-  TrendingUp,
-  AlertOctagon,
-} from "lucide-react";
 import { useGameStore } from "@/store/useGameStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { ProbabilityEngine, SeededRandom } from "@/lib/probability/engine";
 import { soundEngine } from "@/lib/audio/soundEngine";
 import { PacketDefinition, PacketEvent, GameRunResult } from "@/types";
 
-interface FloatingFeedback {
-  id: string;
-  text: string;
-  type: "clean" | "corrupted" | "missed";
-  lane: number;
-  y: number;
-}
-
-// Clean Integer Streak Combo: 3 in a row = 2x, 6 in a row = 3x, 10+ = 4x MAX
-const getComboMultiplier = (c: number): number => {
-  if (c >= 10) return 4;
-  if (c >= 6) return 3;
-  if (c >= 3) return 2;
-  return 1;
-};
-
-interface PhaserGameProps {
-  mode: "classic" | "endless" | "daily";
-  difficulty: "easy" | "medium" | "hard";
-  onGameOver?: (result: GameRunResult) => void;
-}
-
-// 4 distinct horizontal column lanes (percentages from left edge)
-const LANES = [14, 38, 62, 86];
+import {
+  FloatingFeedback,
+  getComboMultiplier,
+  LANES,
+  PhaserGameProps,
+} from "./types";
+import { GameHud } from "./GameHud";
+import { PacketCard } from "./PacketCard";
+import { GameReadyOverlay } from "./GameReadyOverlay";
+import { GameOverModal } from "./GameOverModal";
+import { GameBottomBar } from "./GameBottomBar";
 
 export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
   const router = useRouter();
-  const { theme, hudMode, soundEnabled, setSoundEnabled, sfxVolume, screenShake, setLastRunResult } =
-    useGameStore();
+  const { soundEnabled, setSoundEnabled, screenShake, setLastRunResult } = useGameStore();
   const { isAuthenticated } = useAuthStore();
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -69,7 +39,7 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
   const [gameStatus, setGameStatus] = useState<"ready" | "playing" | "gameover">("ready");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Floating score and missed damage indicators
+  // Floating score and damage indicators
   const [feedbacks, setFeedbacks] = useState<FloatingFeedback[]>([]);
   const [isShaking, setIsShaking] = useState(false);
 
@@ -103,7 +73,7 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
   // Packets state
   const [activePackets, setActivePackets] = useState<PacketDefinition[]>([]);
 
-  // Synchronized state refs for zero-latency keystroke processing without event listener churning
+  // Synchronized state refs for zero-latency keystroke processing
   const gameStatusRef = useRef(gameStatus);
   gameStatusRef.current = gameStatus;
 
@@ -152,9 +122,6 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
     packetCounter: 0,
     lastSpawnTime: 0,
   });
-
-  // Mobile virtual keyboard input
-  const inputRef = useRef<HTMLInputElement>(null);
 
   // Spawn helper: picks the lane with fewest active packets
   const getOptimalLane = useCallback((packets: PacketDefinition[]): number => {
@@ -335,7 +302,7 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
 
       const wpm =
         run.keystrokesCorrect > 0
-          ? Math.round((run.keystrokesCorrect / 5) / (durationSeconds / 60))
+          ? Math.round(run.keystrokesCorrect / 5 / (durationSeconds / 60))
           : 0;
       const accuracy =
         run.keystrokesTotal > 0
@@ -541,7 +508,17 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
 
     animId = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(animId);
-  }, [addFeedback, difficulty, gameStatus, getOptimalLane, handleGameOver, maxCombo, mode, score, triggerShake]);
+  }, [
+    addFeedback,
+    difficulty,
+    gameStatus,
+    getOptimalLane,
+    handleGameOver,
+    maxCombo,
+    mode,
+    score,
+    triggerShake,
+  ]);
 
   // Handle Keystrokes & Typing Interception (Reads from refs for instantaneous response)
   const processKey = useCallback(
@@ -556,7 +533,6 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
       const targetId = activeTargetIdRef.current;
       const curInput = currentInputRef.current;
 
-      // Find best target packet
       let target = packets.find((p) => p.id === targetId);
 
       if (!target) {
@@ -643,7 +619,12 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
             setEmpCharges((c) => c + 1);
             addFeedback("⚡ EMP RESTORED!", "clean", 1, 180);
           }
-          addFeedback(`+${pointsDelta} PTS (${comboMultiplier}x)`, "clean", resolvedTarget.laneIndex, 250);
+          addFeedback(
+            `+${pointsDelta} PTS (${comboMultiplier}x)`,
+            "clean",
+            resolvedTarget.laneIndex,
+            250
+          );
         } else {
           // Corrupted packet!
           pointsDelta = -resolvedTarget.corruptionPenalty;
@@ -672,12 +653,22 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
           }
 
           if (lostShield) {
-            addFeedback(`${pointsDelta} PTS [-1 SHIELD]`, "corrupted", resolvedTarget.laneIndex, 250);
+            addFeedback(
+              `${pointsDelta} PTS [-1 SHIELD]`,
+              "corrupted",
+              resolvedTarget.laneIndex,
+              250
+            );
             if (livesRef.current <= 0) {
               handleGameOver(scoreRef.current + pointsDelta, maxComboRef.current);
             }
           } else {
-            addFeedback(`${pointsDelta} PTS [CORRUPTED]`, "corrupted", resolvedTarget.laneIndex, 250);
+            addFeedback(
+              `${pointsDelta} PTS [CORRUPTED]`,
+              "corrupted",
+              resolvedTarget.laneIndex,
+              250
+            );
           }
         }
 
@@ -729,16 +720,8 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
   // Global Keyboard Listener
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignore if user is typing in a form input outside the game (e.g. search, modal, auth)
-      if (
-        (e.target instanceof HTMLInputElement && e.target !== inputRef.current) ||
-        e.target instanceof HTMLTextAreaElement
-      ) {
-        return;
-      }
-
-      // If mobile virtual input is focused, let onInput handle it to avoid duplicate keystroke events
-      if (e.target === inputRef.current) {
+      // Ignore if user is typing in a form input outside the game
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
         return;
       }
 
@@ -807,6 +790,8 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [initializeRun, processKey, triggerEmp]);
 
+  const totalDuration = difficulty === "easy" ? 11 : difficulty === "medium" ? 8.5 : 6.5;
+
   return (
     <div
       ref={containerRef}
@@ -824,132 +809,18 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
       <div className="absolute inset-0 scanlines z-30 pointer-events-none" />
 
       {/* Top HUD Telemetry Bar */}
-      <div className="flex items-center justify-between px-6 py-3.5 border-b border-border/80 bg-secondary/50 backdrop-blur-md z-20">
-        <div className="flex items-center gap-6">
-          {/* Score */}
-          <div>
-            <div className="text-[10px] font-mono tracking-widest text-muted-foreground uppercase">
-              CURRENT SCORE
-            </div>
-            <div className="text-3xl font-black font-display tracking-tight text-primary glow-text">
-              {score.toLocaleString()}
-            </div>
-          </div>
-
-          {/* Clean Integer Streak Combo */}
-          <div className="hidden sm:block">
-            <div className="text-[10px] font-mono tracking-widest text-muted-foreground uppercase">
-              STREAK COMBO
-            </div>
-            <div className="text-2xl font-black font-display text-amber-400 flex items-center gap-1">
-              <Flame className={`h-5 w-5 ${combo >= 3 ? "text-amber-400 fill-amber-400/40" : "text-muted-foreground"}`} />
-              {getComboMultiplier(combo)}x
-              {combo > 0 && (
-                <span className="text-xs font-mono text-muted-foreground ml-1 font-normal">
-                  ({combo})
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* Shields / Firewall Integrity */}
-          <div>
-            <div className="text-[10px] font-mono tracking-widest text-muted-foreground uppercase">
-              FIREWALL INTEGRITY
-            </div>
-            <div className="flex items-center gap-1.5 mt-1">
-              {[1, 2, 3].map((idx) => (
-                <Shield
-                  key={idx}
-                  className={`h-5 w-5 transition-all ${
-                    idx <= lives
-                      ? "text-primary fill-primary/30 drop-shadow-[0_0_8px_currentColor]"
-                      : "text-muted-foreground/30 fill-transparent"
-                  }`}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Center: Mode Specific Status Telemetry */}
-        <div className="hidden md:flex items-center gap-2 font-mono text-xs">
-          {mode === "classic" && (
-            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 border border-primary/30 text-primary font-bold">
-              <Zap className="h-3.5 w-3.5" />
-              <span>CLASSIC 90S SPRINT</span>
-              <span className="text-muted-foreground">//</span>
-              <span className="text-amber-400">{difficulty.toUpperCase()}</span>
-            </div>
-          )}
-          {mode === "endless" && (
-            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-bold">
-              <Shield className="h-3.5 w-3.5" />
-              <span>SURVIVAL WAVE {Math.floor(elapsedSeconds / 30) + 1}</span>
-              <span className="text-muted-foreground">//</span>
-              <span className="text-amber-400">{difficulty.toUpperCase()}</span>
-            </div>
-          )}
-          {mode === "daily" && (
-            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 font-bold">
-              <Sparkles className="h-3.5 w-3.5" />
-              <span>DAILY CHALLENGE</span>
-              <span className="text-muted-foreground">//</span>
-              <span className="text-primary">{difficulty.toUpperCase()}</span>
-            </div>
-          )}
-        </div>
-
-        {/* Right side: Mode-Adaptive Timer, Restart button & Sound toggle */}
-        <div className="flex items-center gap-3 sm:gap-4">
-          <div>
-            <div className="text-[10px] font-mono tracking-widest text-muted-foreground uppercase text-right">
-              {mode === "classic" ? "TIME REMAINING" : "SURVIVAL TIME"}
-            </div>
-            <div
-              className={`text-2xl font-black font-display flex items-center justify-end gap-1.5 ${
-                mode === "classic" && timeRemaining <= 10
-                  ? "text-rose-500 animate-pulse glow-danger"
-                  : mode === "classic" && timeRemaining <= 20
-                  ? "text-amber-400"
-                  : "text-foreground"
-              }`}
-            >
-              <Clock className="h-5 w-5 text-primary" />
-              {mode === "classic"
-                ? `${timeRemaining}s`
-                : `${Math.floor(elapsedSeconds / 60)}:${(elapsedSeconds % 60)
-                    .toString()
-                    .padStart(2, "0")}`}
-            </div>
-          </div>
-
-          {/* In-Game Restart Button */}
-          <button
-            onClick={(e) => {
-              e.currentTarget.blur();
-              handleRestart();
-            }}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-secondary/80 border border-border hover:border-primary/50 text-xs font-mono font-bold text-muted-foreground hover:text-foreground transition-all active:scale-95 shadow-sm glow-hover"
-            title="Restart Current Game"
-          >
-            <RotateCcw className="h-3.5 w-3.5 text-primary" />
-            <span className="hidden sm:inline">RESTART</span>
-          </button>
-
-          <button
-            onClick={() => setSoundEnabled(!soundEnabled)}
-            className="p-2 rounded-lg bg-secondary/80 border border-border hover:border-primary/50 text-muted-foreground hover:text-foreground transition-colors"
-            title="Toggle Sound"
-          >
-            {soundEnabled ? (
-              <Volume2 className="h-4 w-4 text-primary" />
-            ) : (
-              <VolumeX className="h-4 w-4" />
-            )}
-          </button>
-        </div>
-      </div>
+      <GameHud
+        score={score}
+        combo={combo}
+        lives={lives}
+        mode={mode}
+        difficulty={difficulty}
+        timeRemaining={timeRemaining}
+        elapsedSeconds={elapsedSeconds}
+        soundEnabled={soundEnabled}
+        onRestart={handleRestart}
+        onToggleSound={() => setSoundEnabled(!soundEnabled)}
+      />
 
       {/* Main Arcade Canvas Playfield (4 Lanes) */}
       <div className="relative flex-1 bg-black/75 overflow-hidden">
@@ -1005,353 +876,62 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
 
         {/* Ready / Start Overlay */}
         {gameStatus === "ready" && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/90 backdrop-blur-md z-40 p-6 text-center animate-in fade-in">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 border border-primary/30 mb-4 glow-primary">
-              <Zap className="h-8 w-8 text-primary" />
-            </div>
-            <h2 className="text-3xl sm:text-4xl font-black font-display tracking-tight text-foreground">
-              DATA STREAM ONLINE
-            </h2>
-            <p className="mt-2 text-xs font-mono text-muted-foreground uppercase tracking-widest">
-              MODE: <span className="text-primary font-bold">{mode}</span> // DIFFICULTY:{" "}
-              <span className="text-amber-400 font-bold">{difficulty}</span>
-            </p>
-            <p className="mt-3 text-xs text-muted-foreground max-w-md mx-auto leading-relaxed">
-              Words descend across 4 telemetry lanes. Type the first letter to acquire lock. Keep your 3 Shields intact: words that reach the bottom line will disappear and cost a shield!
-            </p>
-
-            <div className="mt-8 flex items-center justify-center">
-              <button
-                onClick={(e) => {
-                  e.currentTarget.blur();
-                  initializeRun();
-                  setTimeout(() => {
-                    containerRef.current?.focus();
-                  }, 10);
-                }}
-                className="bg-primary text-primary-foreground font-display font-black px-8 py-3.5 rounded-lg text-sm hover:opacity-90 transition-all glow-primary tracking-widest"
-              >
-                START INTERCEPTION [SPACE]
-              </button>
-            </div>
-          </div>
+          <GameReadyOverlay
+            mode={mode}
+            difficulty={difficulty}
+            onStart={() => {
+              initializeRun();
+              setTimeout(() => {
+                containerRef.current?.focus();
+              }, 10);
+            }}
+          />
         )}
 
         {/* Game Over Overlay */}
-        {gameStatus === "gameover" && (() => {
-          const events = runDataRef.current.events;
-          const intercepted = events.filter((e) => e.action === "intercepted");
-          const totalEV = Math.round(intercepted.reduce((sum, e) => sum + e.expectedValue, 0));
-          const realizedPts = intercepted.reduce((sum, e) => sum + e.pointsDelta, 0);
-          const deltaEV = realizedPts - totalEV;
-          const safeCount = intercepted.filter((e) => e.corruptionProbability < 0.25).length;
-          const cautionCount = intercepted.filter((e) => e.corruptionProbability >= 0.25 && e.corruptionProbability < 0.50).length;
-          const dangerCount = intercepted.filter((e) => e.corruptionProbability >= 0.50).length;
-          const missedCount = events.filter((e) => e.action === "missed").length;
-          const corruptedCount = intercepted.filter((e) => e.outcome === "corrupted").length;
-
-          let adviceTag = "BALANCED TACTICAL EXECUTION";
-          let adviceText = "Steady operational execution across multiple lanes. Maintain rhythm above 60 WPM to handle high-difficulty cascades.";
-
-          if (dangerCount >= 2 && corruptedCount >= 1) {
-            adviceTag = "HIGH VARIANCE OVEREXPOSURE";
-            adviceText = "You targeted high-stakes packets (🔴 Danger) without sufficient shield buffer. Recommendation: Prioritize 🟢 Safe & 🟡 Caution tiers to preserve shields and sustain 3x/4x multipliers.";
-          } else if (missedCount >= 2) {
-            adviceTag = "FIREWALL VELOCITY BOTTLENECK";
-            adviceText = "Packets breached the firewall defense line before completion. Recommendation: Prioritize words closest to the defense line, and deploy the [TAB] EMP Defuser during surges.";
-          } else if (safeCount > 0 && cautionCount === 0 && dangerCount === 0) {
-            adviceTag = "CONSERVATIVE BIAS";
-            adviceText = "You strictly typed safe packets. While firewall survival was maximized, expected point yield was capped. Recommendation: Target 🟡 Caution packets during active streak combos.";
-          } else if (deltaEV >= 0) {
-            adviceTag = "OPTIMAL STOCHASTIC EXECUTION";
-            adviceText = `Superb risk-reward discipline! Realized score exceeded mathematical expectancy by +${deltaEV} PTS. High streak combo retention mitigated downside variance.`;
-          }
-
-          return (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/90 backdrop-blur-md z-40 p-4 sm:p-6 text-center animate-in zoom-in-95 duration-200 overflow-y-auto">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-destructive/10 border border-destructive/30 mb-2 glow-danger shrink-0">
-                <AlertTriangle className="h-6 w-6 text-rose-500 animate-bounce" />
-              </div>
-              <h2 className="text-2xl sm:text-3xl font-black font-display tracking-tight text-rose-500">
-                TERMINAL SHUTDOWN
-              </h2>
-              <p className="text-[11px] font-mono text-muted-foreground mt-0.5">
-                Firewall depleted or operational timeline concluded
-              </p>
-
-              {/* Main Score & Telemetry Box */}
-              <div className="mt-3 p-4 rounded-xl bg-card border border-border/80 max-w-lg w-full font-mono text-left shadow-2xl">
-                <div className="flex items-center justify-between border-b border-border/40 pb-2.5 mb-2.5">
-                  <div>
-                    <div className="text-[10px] text-muted-foreground uppercase">FINAL VALIDATED SCORE</div>
-                    <div className="text-3xl font-black text-primary glow-text">
-                      {score.toLocaleString()} PTS
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-[10px] text-muted-foreground uppercase">MAX COMBO</div>
-                    <div className="text-lg font-bold text-amber-400">
-                      {getComboMultiplier(maxCombo)}x ({maxCombo} streak)
-                    </div>
-                  </div>
-                </div>
-
-                {/* Data Science Telemetry Grid */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-2.5 text-xs">
-                  <div className="p-2 rounded bg-secondary/50 border border-border/40">
-                    <div className="text-[9px] text-muted-foreground uppercase">REALIZED PTS</div>
-                    <div className="font-bold text-foreground">{realizedPts}</div>
-                  </div>
-                  <div className="p-2 rounded bg-secondary/50 border border-border/40">
-                    <div className="text-[9px] text-muted-foreground uppercase">EXPECTED EV</div>
-                    <div className="font-bold text-primary">+{totalEV}</div>
-                  </div>
-                  <div className="p-2 rounded bg-secondary/50 border border-border/40">
-                    <div className="text-[9px] text-muted-foreground uppercase">Δ EV VARIANCE</div>
-                    <div className={`font-bold ${deltaEV >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
-                      {deltaEV >= 0 ? `+${deltaEV}` : deltaEV}
-                    </div>
-                  </div>
-                  <div className="p-2 rounded bg-secondary/50 border border-border/40">
-                    <div className="text-[9px] text-muted-foreground uppercase">MISSED / TRAPS</div>
-                    <div className="font-bold text-rose-400">{missedCount} / {corruptedCount}</div>
-                  </div>
-                </div>
-
-                {/* Risk Distribution Tiers */}
-                <div className="p-2 rounded bg-secondary/30 border border-border/40 mb-2.5 text-[11px] flex flex-wrap items-center justify-between gap-1">
-                  <span className="text-muted-foreground text-[10px]">RISK CAPTURED:</span>
-                  <div className="flex items-center gap-3">
-                    <span className="text-emerald-400 font-bold">🟢 Safe: {safeCount}</span>
-                    <span className="text-amber-400 font-bold">🟡 Caution: {cautionCount}</span>
-                    <span className="text-rose-400 font-bold">🔴 Danger: {dangerCount}</span>
-                  </div>
-                </div>
-
-                {/* Data Science Tactical Recommendation */}
-                <div className="p-2.5 rounded-lg bg-primary/10 border border-primary/30 text-[11px]">
-                  <div className="flex items-center gap-1.5 text-primary font-bold mb-1 uppercase tracking-wider text-[10px]">
-                    <Sparkles className="h-3.5 w-3.5" />
-                    DATA SCIENCE INSIGHT: {adviceTag}
-                  </div>
-                  <p className="text-muted-foreground font-sans text-xs leading-relaxed">
-                    {adviceText}
-                  </p>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="mt-3.5 flex flex-wrap items-center justify-center gap-3">
-                <button
-                  onClick={(e) => {
-                    e.currentTarget.blur();
-                    initializeRun();
-                    setTimeout(() => {
-                      containerRef.current?.focus();
-                    }, 10);
-                  }}
-                  className="flex items-center gap-2 bg-primary text-primary-foreground font-display font-bold px-6 py-2.5 rounded-lg text-xs hover:opacity-90 transition-all glow-primary"
-                >
-                  <RotateCcw className="h-4 w-4" />
-                  PLAY AGAIN [SPACE]
-                </button>
-                <button
-                  onClick={() => router.push("/dashboard")}
-                  className="flex items-center gap-2 bg-secondary hover:bg-secondary/80 text-foreground font-display font-medium px-5 py-2.5 rounded-lg text-xs border border-border transition-all"
-                >
-                  <BarChart2 className="h-4 w-4 text-primary" />
-                  VIEW DATA SCIENCE ANALYTICS
-                </button>
-              </div>
-            </div>
-          );
-        })()}
+        {gameStatus === "gameover" && (
+          <GameOverModal
+            score={score}
+            maxCombo={maxCombo}
+            events={runDataRef.current.events}
+            onPlayAgain={() => {
+              initializeRun();
+              setTimeout(() => {
+                containerRef.current?.focus();
+              }, 10);
+            }}
+            onViewAnalytics={() => router.push("/dashboard")}
+          />
+        )}
 
         {/* 4 Multi-Lane Descending Packets */}
         {gameStatus === "playing" &&
-          activePackets.map((pkt) => {
-            const isTarget = activeTargetId === pkt.id;
-            const totalDuration =
-              difficulty === "easy" ? 11 : difficulty === "medium" ? 8.5 : 6.5;
-            const progress = Math.max(0, Math.min(1, 1 - pkt.durationSeconds / totalDuration));
-            const topY = progress * 460 + 15; // 15px to 475px
-
-            // Column lane horizontal coordinate
-            const lanePercent = LANES[pkt.laneIndex % 4];
-
-            // Standardized Risk Tiers
-            const isSafe = pkt.corruptionProbability < 0.25;
-            const isCaution = pkt.corruptionProbability >= 0.25 && pkt.corruptionProbability < 0.50;
-            const isDanger = pkt.corruptionProbability >= 0.50;
-
-            return (
-              <div
-                key={pkt.id}
-                onClick={() => {
-                  setActiveTargetId(pkt.id);
-                  activeTargetIdRef.current = pkt.id;
-                  setCurrentInput("");
-                  currentInputRef.current = "";
-                }}
-                style={{
-                  top: `${topY}px`,
-                  left: `${lanePercent}%`,
-                  transform: "translateX(-50%)",
-                }}
-                className={`absolute w-52 sm:w-56 rounded-xl border p-2.5 backdrop-blur-md cursor-pointer select-none will-change-transform transition-[border-color,box-shadow] duration-150 ${
-                  isTarget
-                    ? "border-primary bg-primary/20 ring-2 ring-primary scale-105 z-20 glow-primary shadow-2xl"
-                    : isSafe
-                    ? "border-emerald-500/50 bg-card/90 hover:border-emerald-400 z-10 shadow-lg"
-                    : isCaution
-                    ? "border-amber-500/50 bg-card/90 hover:border-amber-400 z-10 shadow-lg"
-                    : "border-rose-500/50 bg-card/90 hover:border-rose-400 z-10 shadow-lg"
-                }`}
-              >
-                {/* Header: Reward & Clear Color Risk Tag */}
-                <div className="flex items-center justify-between text-[11px] mb-1 font-mono">
-                  <span className="font-bold text-foreground font-display text-xs">+{pkt.reward} PTS</span>
-                  <span
-                    className={`px-1.5 py-0.5 rounded text-[9.5px] font-bold ${
-                      isSafe
-                        ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40"
-                        : isCaution
-                        ? "bg-amber-500/20 text-amber-400 border border-amber-500/40"
-                        : "bg-rose-500/20 text-rose-400 border border-rose-500/40"
-                    }`}
-                  >
-                    {isSafe
-                      ? `🟢 SAFE [0 SHIELD RISK] ${Math.round(pkt.corruptionProbability * 100)}%`
-                      : isCaution
-                      ? `🟡 CAUTION [0 SHIELD RISK] ${Math.round(pkt.corruptionProbability * 100)}%`
-                      : `🔴 DANGER [SHIELD RISK] ${Math.round(pkt.corruptionProbability * 100)}%`}
-                  </span>
-                </div>
-
-                {/* Packet String to Type */}
-                <div className="text-center font-mono text-lg font-black tracking-widest my-1 py-1 rounded bg-black/60 border border-border/40">
-                  {isTarget ? (
-                    <span>
-                      <span className="text-primary glow-text font-black">
-                        {pkt.code.slice(0, currentInput.length)}
-                      </span>
-                      <span className="text-foreground">
-                        {pkt.code.slice(currentInput.length)}
-                      </span>
-                    </span>
-                  ) : currentInput.length > 0 && pkt.code.startsWith(currentInput) ? (
-                    <span>
-                      <span className="text-amber-400 font-bold">
-                        {pkt.code.slice(0, currentInput.length)}
-                      </span>
-                      <span className="text-foreground">
-                        {pkt.code.slice(currentInput.length)}
-                      </span>
-                    </span>
-                  ) : (
-                    <span className="text-foreground">{pkt.code}</span>
-                  )}
-                </div>
-
-                {/* Bottom Row: EV and Countdown */}
-                <div className="flex items-center justify-between text-[10px] font-mono mt-1 pt-1 border-t border-border/40">
-                  <span
-                    className={`font-bold flex items-center gap-1 ${
-                      isSafe ? "text-emerald-400" : isCaution ? "text-amber-400" : "text-rose-400"
-                    }`}
-                  >
-                    EV: +{pkt.expectedValue}
-                  </span>
-                  <span className="text-muted-foreground text-[9px] font-bold">
-                    {Math.max(0, pkt.durationSeconds).toFixed(1)}s LEFT
-                  </span>
-                </div>
-
-                {/* Decay progress bar */}
-                <div className="w-full bg-secondary/80 h-1 rounded-full overflow-hidden mt-1.5">
-                  <div
-                    className={`h-full ${
-                      isTarget
-                        ? "bg-primary"
-                        : isSafe
-                        ? "bg-emerald-400"
-                        : isCaution
-                        ? "bg-amber-400"
-                        : "bg-rose-400"
-                    }`}
-                    style={{ width: `${(pkt.durationSeconds / totalDuration) * 100}%` }}
-                  />
-                </div>
-              </div>
-            );
-          })}
+          activePackets.map((pkt) => (
+            <PacketCard
+              key={pkt.id}
+              packet={pkt}
+              isTarget={activeTargetId === pkt.id}
+              currentInput={currentInput}
+              totalDuration={totalDuration}
+              onClick={() => {
+                setActiveTargetId(pkt.id);
+                activeTargetIdRef.current = pkt.id;
+                setCurrentInput("");
+                currentInputRef.current = "";
+              }}
+            />
+          ))}
       </div>
 
       {/* Bottom Keyboard Telemetry & Assist Bar */}
-      <div className="px-6 py-2.5 border-t border-border/80 bg-secondary/40 flex items-center justify-between z-20 font-mono text-xs">
-        <div className="flex items-center gap-2">
-          <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
-          <span className="text-muted-foreground">KEYBOARD INTERFACE:</span>
-          {activeTargetId ? (
-            <span className="text-primary font-bold">
-              LOCKED ON [{currentInput}_] // TYPE NEXT CHAR
-            </span>
-          ) : (
-            <span className="text-muted-foreground">
-              SCANNING // TYPE ANY PACKET FIRST LETTER TO LOCK TARGET
-            </span>
-          )}
-        </div>
-
-        {/* Mobile touch hidden input */}
-        <input
-          ref={inputRef}
-          type="text"
-          className="opacity-0 absolute -z-10 h-0 w-0 pointer-events-none"
-          tabIndex={-1}
-          aria-hidden="true"
-          onChange={(e) => {
-            const val = e.target.value;
-            if (val.length > 0) {
-              processKey(val.charAt(val.length - 1));
-              e.target.value = "";
-            }
-          }}
-        />
-
-        <div className="flex items-center gap-3">
-          {/* Tactical EMP Defusal Trigger Button */}
-          <button
-            onClick={(e) => {
-              e.currentTarget.blur();
-              triggerEmp();
-            }}
-            disabled={empCharges <= 0 || gameStatus !== "playing"}
-            className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-mono font-bold transition-all shadow-sm ${
-              empCharges > 0 && gameStatus === "playing"
-                ? "bg-primary/20 text-primary border border-primary/50 hover:bg-primary/30 glow-primary active:scale-95 cursor-pointer"
-                : "bg-secondary/40 text-muted-foreground border border-border/40 opacity-50 cursor-not-allowed"
-            }`}
-            title="Vaporize lowest imminent threat packet without shield penalty (Tab key)"
-          >
-            <Zap
-              className={`h-3.5 w-3.5 ${
-                empCharges > 0 && gameStatus === "playing" ? "text-primary animate-pulse" : ""
-              }`}
-            />
-            <span>[TAB] EMP BLAST ({empCharges})</span>
-          </button>
-
-          <button
-            onClick={() => {
-              if (inputRef.current) inputRef.current.focus();
-            }}
-            className="sm:hidden text-xs px-2.5 py-1 rounded bg-primary/20 text-primary border border-primary/40 font-mono"
-          >
-            OPEN TOUCH KEYPAD
-          </button>
-        </div>
-      </div>
+      <GameBottomBar
+        activeTargetId={activeTargetId}
+        currentInput={currentInput}
+        empCharges={empCharges}
+        gameStatus={gameStatus}
+        onTriggerEmp={triggerEmp}
+        onProcessKey={processKey}
+      />
     </div>
   );
 }
