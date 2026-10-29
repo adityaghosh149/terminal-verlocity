@@ -125,9 +125,9 @@ export default function LeaderboardPage() {
             </div>
           ) : (
             <div className="p-3.5 rounded-xl bg-card border border-border flex items-center gap-3 font-mono text-xs">
-              <span className="text-muted-foreground">ACTIVE CALLSIGN:</span>
+              <span className="text-muted-foreground">USERNAME:</span>
               <span className="font-bold text-primary">@{username}</span>
-              <span className="text-muted-foreground text-[10px]">(No runs on this board)</span>
+              <span className="text-muted-foreground text-[10px]">(No runs yet)</span>
             </div>
           )
         ) : (
@@ -136,7 +136,7 @@ export default function LeaderboardPage() {
             className="inline-flex items-center gap-2 bg-secondary hover:bg-secondary/80 text-foreground font-mono font-bold px-4 py-2.5 rounded-lg text-xs border border-border transition-all"
           >
             <User className="h-4 w-4 text-primary" />
-            ENTER CALLSIGN
+            SET USERNAME
           </button>
         )}
       </div>

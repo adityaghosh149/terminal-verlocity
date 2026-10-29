@@ -83,34 +83,22 @@ export function Navbar() {
             <ThemeSelector />
 
             {username ? (
-              <div className="flex items-center gap-2 font-mono">
-                {/* Active Callsign Badge */}
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/30 text-xs">
-                  <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span className="hidden sm:inline text-muted-foreground text-[10px] uppercase">
-                    OPERATIVE:
-                  </span>
-                  <span className="font-black text-primary tracking-wider">
-                    @{username}
-                  </span>
-                </div>
-
-                {/* Edit Callsign */}
+              <div className="flex items-center gap-1.5 font-mono">
                 <button
                   type="button"
                   onClick={openCallsignModal}
-                  className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors"
-                  title="Change Callsign for this session"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/30 text-xs text-primary font-bold hover:bg-primary/20 transition-all"
+                  title="Change username"
                 >
-                  <Edit2 className="h-3.5 w-3.5" />
+                  <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                  @{username}
                 </button>
 
-                {/* Reset Session */}
                 <button
                   type="button"
                   onClick={clearSession}
                   className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                  title="Clear Session Callsign"
+                  title="Reset Username"
                 >
                   <RotateCcw className="h-3.5 w-3.5" />
                 </button>
@@ -119,10 +107,10 @@ export function Navbar() {
               <button
                 type="button"
                 onClick={openCallsignModal}
-                className="text-xs bg-primary text-primary-foreground font-display font-bold px-3.5 py-1.5 rounded-lg hover:opacity-90 transition-opacity flex items-center gap-1.5 glow-primary tracking-wider"
+                className="text-xs bg-primary text-primary-foreground font-display font-bold px-3 py-1.5 rounded-lg hover:opacity-90 transition-opacity flex items-center gap-1.5 glow-primary"
               >
                 <UserIcon className="h-3.5 w-3.5" />
-                ENTER CALLSIGN
+                SET USERNAME
               </button>
             )}
           </div>

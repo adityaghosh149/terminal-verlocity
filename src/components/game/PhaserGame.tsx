@@ -255,8 +255,8 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
 
       setScore(0);
       scoreRef.current = 0;
-      setLives(3);
-      livesRef.current = 3;
+      setLives(5);
+      livesRef.current = 5;
       setCombo(0);
       comboRef.current = 0;
       setMaxCombo(0);

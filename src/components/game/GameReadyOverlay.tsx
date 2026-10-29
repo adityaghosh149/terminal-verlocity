@@ -28,22 +28,22 @@ export function GameReadyOverlay({ mode, difficulty, onStart }: GameReadyOverlay
         <Zap className="h-8 w-8 text-primary" />
       </div>
       <h2 className="text-3xl sm:text-4xl font-black font-display tracking-tight text-foreground">
-        DATA STREAM ONLINE
+        DATA STREAM READY
       </h2>
       <p className="mt-2 text-xs font-mono text-muted-foreground uppercase tracking-widest">
         MODE: <span className="text-primary font-bold">{mode}</span> // DIFFICULTY:{" "}
         <span className="text-amber-400 font-bold">{difficulty}</span>
       </p>
 
-      {/* Operative Callsign Badge for Session */}
+      {/* Username Badge */}
       <div className="mt-4 flex items-center justify-center gap-2 font-mono">
-        <span className="text-[11px] text-muted-foreground uppercase">OPERATIVE:</span>
+        <span className="text-[11px] text-muted-foreground uppercase">USERNAME:</span>
         {username ? (
           <button
             type="button"
             onClick={openCallsignModal}
             className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-primary/10 border border-primary/30 text-xs font-mono font-bold text-primary hover:bg-primary/20 transition-all"
-            title="Change session callsign"
+            title="Change username"
           >
             <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
             @{username}
@@ -56,23 +56,21 @@ export function GameReadyOverlay({ mode, difficulty, onStart }: GameReadyOverlay
             className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-secondary border border-primary/40 text-xs font-mono font-bold text-primary hover:bg-primary/10 transition-all glow-primary"
           >
             <User className="h-3 w-3" />
-            ENTER USERNAME FOR THIS SESSION
+            SET USERNAME
           </button>
         )}
       </div>
 
       <p className="mt-4 text-xs text-muted-foreground max-w-md mx-auto leading-relaxed">
-        Words descend across 4 telemetry lanes. Type the first letter on your keyboard to lock
-        target. Keep your 3 Shields intact: words that reach the bottom firewall line will disappear
-        and cost a shield!
+        Type the falling words before they hit the bottom. You have <span className="text-primary font-bold">5 Shields</span>. Missed words cost 1 Shield.
       </p>
 
-      <div className="mt-8 flex items-center justify-center">
+      <div className="mt-6 flex items-center justify-center">
         <button
           onClick={handleStart}
           className="bg-primary text-primary-foreground font-display font-black px-8 py-3.5 rounded-lg text-sm hover:opacity-90 transition-all glow-primary tracking-widest"
         >
-          {username ? "START INTERCEPTION [SPACE]" : "SET USERNAME & START"}
+          {username ? "START PLAYING [SPACE]" : "SET USERNAME & START"}
         </button>
       </div>
     </div>

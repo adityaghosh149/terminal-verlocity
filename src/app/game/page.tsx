@@ -24,7 +24,7 @@ export default function GamePage() {
 
   const modes: { id: GameMode; label: string; desc: string }[] = [
     { id: "classic", label: "CLASSIC (90s)", desc: "90-second timed sprint for highest validated score" },
-    { id: "endless", label: "SURVIVAL", desc: "Survive continuous waves until 3 shields drop" },
+    { id: "endless", label: "SURVIVAL", desc: "Survive continuous waves until 5 shields drop" },
     { id: "daily", label: "DAILY CHALLENGE", desc: "Global synchronized seed: identical packets for all players" },
   ];
 

@@ -19,7 +19,7 @@ export function LeaderboardTable({ entries, loading, currentUsername }: Leaderbo
         <thead className="border-b border-border/60 bg-secondary/40 text-muted-foreground">
           <tr>
             <th className="py-3.5 px-4 w-16">RANK</th>
-            <th className="py-3.5 px-4">OPERATIVE</th>
+            <th className="py-3.5 px-4">PLAYER</th>
             <th className="py-3.5 px-4">SCORE</th>
             <th className="py-3.5 px-4">MODE</th>
             <th className="py-3.5 px-4">DIFFICULTY</th>

@@ -74,10 +74,10 @@ export function GameHud({
         {/* Shields / Firewall Integrity */}
         <div>
           <div className="text-[10px] font-mono tracking-widest text-muted-foreground uppercase">
-            FIREWALL INTEGRITY
+            SHIELDS ({lives}/5)
           </div>
           <div className="flex items-center gap-1.5 mt-1">
-            {[1, 2, 3].map((idx) => (
+            {[1, 2, 3, 4, 5].map((idx) => (
               <Shield
                 key={idx}
                 className={`h-5 w-5 transition-all ${

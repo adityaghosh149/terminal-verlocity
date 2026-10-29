@@ -74,7 +74,7 @@ export default function HomePage() {
               EXPECTED VALUE MODEL // PROBABILITY ENGINE
             </span>
             <span className="text-xs font-mono text-muted-foreground">
-              MODEL: EV = (1 - p)R - pC - K
+              MODEL: EV = (1 - p)R - pC
             </span>
           </div>
 
