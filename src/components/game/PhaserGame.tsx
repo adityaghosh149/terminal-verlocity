@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useGameStore } from "@/store/useGameStore";
-import { useAuthStore } from "@/store/useAuthStore";
+import { useSessionStore } from "@/store/useSessionStore";
 import { ProbabilityEngine, SeededRandom } from "@/lib/probability/engine";
 import { soundEngine } from "@/lib/audio/soundEngine";
 import { PacketDefinition, PacketEvent, GameRunResult } from "@/types";
@@ -23,7 +23,11 @@ import { GameBottomBar } from "./GameBottomBar";
 export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
   const router = useRouter();
   const { soundEnabled, setSoundEnabled, screenShake, setLastRunResult } = useGameStore();
-  const { isAuthenticated } = useAuthStore();
+  const { username, openCallsignModal } = useSessionStore();
+  const usernameRef = useRef(username);
+  useEffect(() => {
+    usernameRef.current = username;
+  }, [username]);
 
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -207,7 +211,7 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
       const res = await fetch("/api/game/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mode, difficulty }),
+        body: JSON.stringify({ mode, difficulty, username: usernameRef.current || "OPERATIVE" }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -357,6 +361,7 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
             maxCombo: maxComboVal,
             events: run.events,
             endTime,
+            username: usernameRef.current || "OPERATIVE",
           }),
         });
       } catch (err) {
@@ -731,6 +736,10 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
         (e.key === " " || e.key === "Enter")
       ) {
         e.preventDefault();
+        if (!usernameRef.current) {
+          openCallsignModal();
+          return;
+        }
         initializeRun();
         setTimeout(() => {
           containerRef.current?.focus();
@@ -748,6 +757,10 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
         !e.altKey
       ) {
         e.preventDefault();
+        if (!usernameRef.current) {
+          openCallsignModal();
+          return;
+        }
         initializeRun().then(() => {
           processKey(e.key);
           setTimeout(() => {

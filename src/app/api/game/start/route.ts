@@ -2,11 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { SignJWT } from "jose";
 import crypto from "crypto";
-import { getSessionUser } from "@/lib/auth/sessionHelper";
 
 const StartRunSchema = z.object({
   mode: z.enum(["classic", "endless", "daily"]),
   difficulty: z.enum(["easy", "medium", "hard"]),
+  username: z.string().max(20).optional(),
 });
 
 const JWT_SECRET = process.env.JWT_ACCESS_SECRET || "fallback_run_signing_secret_min_32_chars";
@@ -20,8 +20,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid game parameters." }, { status: 400 });
     }
 
-    const { mode, difficulty } = parsed.data;
-    const sessionUser = await getSessionUser(req);
+    const { mode, difficulty, username } = parsed.data;
+    const operativeName = (username || "").trim().toUpperCase().slice(0, 15) || "OPERATIVE";
 
     const runId = "run_" + crypto.randomUUID();
     const startTime = Date.now();
@@ -35,10 +35,10 @@ export async function POST(req: NextRequest) {
       seed = `seed_${crypto.randomBytes(8).toString("hex")}`;
     }
 
-    // Sign a tamper-evident run authorization token
+    // Sign a tamper-evident run authorization token containing the operative callsign
     const runToken = await new SignJWT({
       runId,
-      userId: sessionUser?.userId || null,
+      username: operativeName,
       mode,
       difficulty,
       seed,
@@ -54,6 +54,7 @@ export async function POST(req: NextRequest) {
       success: true,
       runId,
       runToken,
+      username: operativeName,
       mode,
       difficulty,
       seed,

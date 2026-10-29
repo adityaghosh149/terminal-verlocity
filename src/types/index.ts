@@ -97,6 +97,7 @@ export interface UserSettings {
 
 export interface LeaderboardEntry {
   rank: number;
+  runId?: string;
   userId: string;
   username: string;
   displayName: string;

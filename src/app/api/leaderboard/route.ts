@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/db/mongodb";
 import { GameRun } from "@/models/GameRun";
-import { User } from "@/models/User";
-import { getSessionUser } from "@/lib/auth/sessionHelper";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +9,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const mode = searchParams.get("mode") || "all";
     const difficulty = searchParams.get("difficulty") || "all";
+    const usernameParam = searchParams.get("username")?.trim().toUpperCase();
     const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
     const limit = Math.min(50, Math.max(1, parseInt(searchParams.get("limit") || "20", 10)));
     const skip = (page - 1) * limit;
@@ -19,7 +18,6 @@ export async function GET(req: NextRequest) {
 
     const filter: Record<string, any> = {
       status: "validated",
-      userId: { $exists: true, $ne: null },
     };
 
     if (mode !== "all") filter.mode = mode;
@@ -30,19 +28,17 @@ export async function GET(req: NextRequest) {
         .sort({ finalScore: -1, accuracy: -1, createdAt: -1 })
         .skip(skip)
         .limit(limit)
-        .populate("userId", "username displayName level")
         .lean(),
       GameRun.countDocuments(filter),
     ]);
 
-    const sessionUser = await getSessionUser(req);
     let myRank: number | null = null;
     let myBestScore: number | null = null;
 
-    if (sessionUser?.userId) {
+    if (usernameParam) {
       const bestUserRun = await GameRun.findOne({
         ...filter,
-        userId: sessionUser.userId,
+        username: usernameParam,
       }).sort({ finalScore: -1 });
 
       if (bestUserRun) {
@@ -56,14 +52,14 @@ export async function GET(req: NextRequest) {
     }
 
     const leaderboard = runs.map((run: any, idx: number) => {
-      const user = run.userId || {};
+      const runUser = run.username || "OPERATIVE";
       return {
         rank: skip + idx + 1,
         runId: run.runId,
-        userId: user._id?.toString() || "unknown",
-        username: user.username || "Anonymous Operative",
-        displayName: user.displayName || user.username || "Operative",
-        level: user.level || 1,
+        userId: run.runId,
+        username: runUser,
+        displayName: runUser,
+        level: Math.floor(Math.sqrt((run.finalScore || 0) / 40)) + 1,
         score: run.finalScore,
         mode: run.mode,
         difficulty: run.difficulty,

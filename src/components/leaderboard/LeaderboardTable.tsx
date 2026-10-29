@@ -7,9 +7,12 @@ import { LeaderboardEntry } from "@/types";
 interface LeaderboardTableProps {
   entries: LeaderboardEntry[];
   loading: boolean;
+  currentUsername?: string;
 }
 
-export function LeaderboardTable({ entries, loading }: LeaderboardTableProps) {
+export function LeaderboardTable({ entries, loading, currentUsername }: LeaderboardTableProps) {
+  const normCurrent = currentUsername?.trim().toUpperCase();
+
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-left font-mono text-xs">
@@ -43,6 +46,7 @@ export function LeaderboardTable({ entries, loading }: LeaderboardTableProps) {
           ) : (
             entries.map((entry) => {
               const isTop3 = entry.rank <= 3;
+              const isCurrentUser = normCurrent && entry.username.toUpperCase() === normCurrent;
               const medalColor =
                 entry.rank === 1
                   ? "text-amber-400"
@@ -51,7 +55,14 @@ export function LeaderboardTable({ entries, loading }: LeaderboardTableProps) {
                   : "text-amber-600";
 
               return (
-                <tr key={entry.rank} className="hover:bg-secondary/30 transition-colors">
+                <tr
+                  key={`${entry.rank}-${entry.username}`}
+                  className={`transition-colors ${
+                    isCurrentUser
+                      ? "bg-primary/10 border-l-2 border-l-primary"
+                      : "hover:bg-secondary/30"
+                  }`}
+                >
                   <td className="py-3.5 px-4 font-bold flex items-center gap-1.5">
                     {isTop3 ? (
                       <Medal className={`h-4 w-4 ${medalColor}`} />
@@ -65,7 +76,14 @@ export function LeaderboardTable({ entries, loading }: LeaderboardTableProps) {
                         <User className="h-3.5 w-3.5" />
                       </div>
                       <div>
-                        <span className="font-bold text-foreground">{entry.displayName}</span>
+                        <span className="font-bold text-foreground flex items-center gap-1.5">
+                          {entry.displayName}
+                          {isCurrentUser && (
+                            <span className="text-[9px] px-1 rounded bg-primary/20 text-primary font-bold">
+                              YOU
+                            </span>
+                          )}
+                        </span>
                         <span className="text-[10px] text-muted-foreground block -mt-0.5">
                           @{entry.username}
                         </span>
@@ -98,7 +116,7 @@ export function LeaderboardTable({ entries, loading }: LeaderboardTableProps) {
                     <span className="text-rose-400">{entry.corruptedPackets || 0}</span>
                   </td>
                   <td className="py-3.5 px-4 text-muted-foreground text-[11px]">
-                    {new Date(entry.date).toLocaleDateString()}
+                    {entry.date ? new Date(entry.date).toLocaleDateString() : "Just now"}
                   </td>
                 </tr>
               );

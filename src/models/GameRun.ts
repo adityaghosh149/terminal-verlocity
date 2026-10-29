@@ -3,6 +3,7 @@ import { GameMode, Difficulty, PacketEvent } from "@/types";
 
 export interface IGameRun extends Document {
   runId: string;
+  username: string;
   userId?: mongoose.Types.ObjectId;
   guestId?: string;
   mode: GameMode;
@@ -35,6 +36,12 @@ const GameRunSchema = new Schema<IGameRun>(
       type: String,
       required: true,
       unique: true,
+      index: true,
+    },
+    username: {
+      type: String,
+      required: true,
+      default: "Operative",
       index: true,
     },
     userId: {
