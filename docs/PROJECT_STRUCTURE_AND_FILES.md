@@ -93,6 +93,10 @@ ds-game/
 #### `src/components/auth/`
 * **`AuthModal.tsx`**: Unified popup dialog supporting instant switching between Login and Registration.
 
+#### `src/components/leaderboard/`
+* **`LeaderboardTable.tsx`**: Interactive ranked runners table with mode/difficulty filters, row-hover inspection, and direct profile inspect trigger.
+* **`PlayerProfileModal.tsx`**: In-depth telemetry summary modal displaying runner level, behavioral archetype badge, personal best, average velocity WPM, precision accuracy, combat clean/corrupted ratio bar, recent operations history, and unlocked achievement trophies.
+
 #### `src/components/layout/`
 * **`Navbar.tsx`**: Responsive header with navigation links, live user profile avatar, theme selector, and live online runners badge.
 * **`OnlinePresenceBadge.tsx`**: Client component broadcasting periodic heartbeats and displaying live online runners with a pulsing green beacon.

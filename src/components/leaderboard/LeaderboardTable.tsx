@@ -9,9 +9,15 @@ interface LeaderboardTableProps {
   entries: LeaderboardEntry[];
   loading: boolean;
   currentUsername?: string;
+  onSelectPlayer?: (username: string) => void;
 }
 
-export function LeaderboardTable({ entries, loading, currentUsername }: LeaderboardTableProps) {
+export function LeaderboardTable({
+  entries,
+  loading,
+  currentUsername,
+  onSelectPlayer,
+}: LeaderboardTableProps) {
   const normCurrent = currentUsername?.trim().toLowerCase();
 
   return (
@@ -28,19 +34,20 @@ export function LeaderboardTable({ entries, loading, currentUsername }: Leaderbo
             <th className="py-3.5 px-4">ACCURACY</th>
             <th className="py-3.5 px-4">PACKETS</th>
             <th className="py-3.5 px-4">TIMESTAMP</th>
+            <th className="py-3.5 px-4 text-right">PROFILE</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-border/40">
           {loading ? (
             <tr>
-              <td colSpan={9} className="py-12 text-center text-muted-foreground">
+              <td colSpan={10} className="py-12 text-center text-muted-foreground">
                 <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2 text-primary" />
                 Synchronizing telemetry records...
               </td>
             </tr>
           ) : entries.length === 0 ? (
             <tr>
-              <td colSpan={9} className="py-12 text-center text-muted-foreground">
+              <td colSpan={10} className="py-12 text-center text-muted-foreground">
                 No validated run records matching current filter criteria.
               </td>
             </tr>
@@ -58,11 +65,13 @@ export function LeaderboardTable({ entries, loading, currentUsername }: Leaderbo
               return (
                 <tr
                   key={`${entry.rank}-${entry.username}`}
-                  className={`transition-colors ${
+                  onClick={() => onSelectPlayer?.(entry.username)}
+                  className={`transition-colors cursor-pointer group ${
                     isCurrentUser
-                      ? "bg-primary/10 border-l-2 border-l-primary"
-                      : "hover:bg-secondary/30"
+                      ? "bg-primary/10 border-l-2 border-l-primary hover:bg-primary/15"
+                      : "hover:bg-secondary/40"
                   }`}
+                  title={`Click to inspect @${entry.username}'s profile summary`}
                 >
                   <td className="py-3.5 px-4 font-bold flex items-center gap-1.5">
                     {isTop3 ? (
@@ -73,11 +82,11 @@ export function LeaderboardTable({ entries, loading, currentUsername }: Leaderbo
                   </td>
                   <td className="py-3.5 px-4">
                     <div className="flex items-center gap-2">
-                      <div className="h-6 w-6 rounded-full bg-secondary border border-border flex items-center justify-center text-[10px] text-primary">
+                      <div className="h-6 w-6 rounded-full bg-secondary border border-border flex items-center justify-center text-[10px] text-primary group-hover:border-primary/50 transition-colors">
                         <User className="h-3.5 w-3.5" />
                       </div>
                       <div>
-                        <span className="font-bold text-foreground flex items-center gap-1.5">
+                        <span className="font-bold text-foreground flex items-center gap-1.5 group-hover:text-primary transition-colors">
                           {entry.displayName}
                           {isCurrentUser && (
                             <span className="text-[9px] px-1 rounded bg-primary/20 text-primary font-bold">
@@ -118,6 +127,20 @@ export function LeaderboardTable({ entries, loading, currentUsername }: Leaderbo
                   </td>
                   <td className="py-3.5 px-4 text-muted-foreground text-[11px]">
                     {entry.date ? new Date(entry.date).toLocaleDateString() : "Just now"}
+                  </td>
+                  <td className="py-3.5 px-4 text-right">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSelectPlayer?.(entry.username);
+                      }}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-secondary/80 hover:bg-primary/20 text-muted-foreground hover:text-primary border border-border hover:border-primary/40 transition-all font-mono text-[11px] font-bold shadow-sm"
+                      title={`Inspect @${entry.username}'s profile & stats`}
+                    >
+                      <User className="h-3 w-3" />
+                      <span>VIEW</span>
+                    </button>
                   </td>
                 </tr>
               );

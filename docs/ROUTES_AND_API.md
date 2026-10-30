@@ -230,9 +230,9 @@ This document provides a comprehensive specification of all user-facing frontend
 ---
 
 ### 5.4 Player Achievements
-* **Endpoint:** `GET /api/player/achievements`
-* **Access Level:** **Protected** *(Requires active user session)*
-* **Description:** Returns earned achievements, unlock timestamps, and progress toward upcoming speed and survival milestones.
+* **Endpoint:** `GET /api/player/achievements` | `GET /api/player/achievements?username={target_runner}`
+* **Access Level:** **Public / Authenticated**
+* **Description:** Returns earned achievements, unlock timestamps, and milestone definitions. When `?username=...` is specified, returns the achievement telemetry for the requested runner (ideal for leaderboard profiles and spectator inspection). If omitted, defaults to the authenticated session runner.
 
 ---
 

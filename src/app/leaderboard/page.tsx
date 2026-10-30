@@ -10,12 +10,15 @@ import { useSessionStore } from "@/store/useSessionStore";
 import { LeaderboardFilters } from "@/components/leaderboard/LeaderboardFilters";
 import { LeaderboardTable } from "@/components/leaderboard/LeaderboardTable";
 import { LeaderboardPagination } from "@/components/leaderboard/LeaderboardPagination";
+import { PlayerProfileModal } from "@/components/leaderboard/PlayerProfileModal";
 
 export default function LeaderboardPage() {
   const { user, openAuthModal } = useAuthStore();
   const { username } = useSessionStore();
   const effectiveUsername = user?.username || username;
   const [boardType, setBoardType] = useState<"all-time" | "daily">("all-time");
+
+  const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
 
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -232,6 +235,7 @@ export default function LeaderboardPage() {
           entries={entries}
           loading={loading}
           currentUsername={effectiveUsername || undefined}
+          onSelectPlayer={setSelectedPlayer}
         />
         <LeaderboardPagination
           page={page}
@@ -240,6 +244,15 @@ export default function LeaderboardPage() {
           setPage={setPage}
         />
       </div>
+
+      {/* Interactive Player Profile Telemetry Modal */}
+      {selectedPlayer && (
+        <PlayerProfileModal
+          username={selectedPlayer}
+          isSelf={selectedPlayer.toLowerCase() === effectiveUsername?.toLowerCase()}
+          onClose={() => setSelectedPlayer(null)}
+        />
+      )}
     </div>
   );
 }
