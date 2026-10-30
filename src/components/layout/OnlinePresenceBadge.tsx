@@ -74,16 +74,16 @@ export function OnlinePresenceBadge({
 
   return (
     <div
-      className={`inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-mono text-[11px] font-bold tracking-wider select-none shadow-[0_0_12px_rgba(16,185,129,0.2)] transition-all ${className}`}
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-mono text-[11px] font-bold tracking-wider select-none shadow-[0_0_12px_rgba(16,185,129,0.2)] transition-all whitespace-nowrap shrink-0 ${className}`}
       title="Currently active runners across the network"
     >
-      <span className="relative flex h-2 w-2">
+      <span className="relative flex h-2 w-2 shrink-0">
         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
         <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
       </span>
-      {showIcon && <Users className="h-3 w-3 text-emerald-400" />}
-      <span>
-        {onlineCount} {onlineCount === 1 ? "RUNNER" : "RUNNERS"} ONLINE
+      {showIcon && <Users className="h-3 w-3 text-emerald-400 shrink-0" />}
+      <span className="whitespace-nowrap">
+        {onlineCount} <span className="hidden xl:inline">{onlineCount === 1 ? "RUNNER" : "RUNNERS"}</span> ONLINE
       </span>
     </div>
   );
