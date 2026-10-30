@@ -18,6 +18,7 @@ import { useAuthStore } from "@/store/useAuthStore";
 import { useGameStore } from "@/store/useGameStore";
 import { ThemeSelector } from "@/components/ui/ThemeSelector";
 import { AuthModal } from "@/components/auth/AuthModal";
+import { OnlinePresenceBadge } from "@/components/layout/OnlinePresenceBadge";
 
 export function Navbar() {
   const pathname = usePathname();
@@ -82,8 +83,11 @@ export function Navbar() {
             })}
           </nav>
 
-          {/* Right side: Themes & Authentication */}
+          {/* Right side: Themes, Online Status & Authentication */}
           <div className="flex items-center gap-2.5 sm:gap-3">
+            {/* Live Online Runners Counter */}
+            <OnlinePresenceBadge className="hidden sm:inline-flex" />
+
             {/* Custom Styled Theme Switcher */}
             <ThemeSelector />
 

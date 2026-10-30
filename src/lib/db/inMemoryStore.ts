@@ -45,11 +45,21 @@ export interface StoredUser {
   createdAt: Date;
 }
 
+export interface StoredPresence {
+  sessionId: string;
+  userId?: string;
+  username?: string;
+  path?: string;
+  lastSeen: number;
+}
+
 declare global {
   // eslint-disable-next-line no-var
   var inMemoryGameRuns: StoredRun[] | undefined;
   // eslint-disable-next-line no-var
   var inMemoryUsers: StoredUser[] | undefined;
+  // eslint-disable-next-line no-var
+  var inMemoryPresence: Map<string, StoredPresence> | undefined;
 }
 
 if (!global.inMemoryGameRuns) {
@@ -57,6 +67,9 @@ if (!global.inMemoryGameRuns) {
 }
 if (!global.inMemoryUsers) {
   global.inMemoryUsers = [];
+}
+if (!global.inMemoryPresence) {
+  global.inMemoryPresence = new Map<string, StoredPresence>();
 }
 
 export const inMemoryStore = {
@@ -121,8 +134,37 @@ export const inMemoryStore = {
   findUserById(id: string): StoredUser | undefined {
     return global.inMemoryUsers!.find((u) => u.id === id);
   },
+
+  // Presence / Active Online Users
+  recordPresence(sessionId: string, userId?: string, username?: string, path?: string): number {
+    const now = Date.now();
+    global.inMemoryPresence!.set(sessionId, {
+      sessionId,
+      userId,
+      username: username || "guest",
+      path: path || "/",
+      lastSeen: now,
+    });
+    // Evict stale sessions older than 60 seconds
+    for (const [id, session] of global.inMemoryPresence!.entries()) {
+      if (now - session.lastSeen > 60000) {
+        global.inMemoryPresence!.delete(id);
+      }
+    }
+    return global.inMemoryPresence!.size;
+  },
+  getOnlineCount(): number {
+    const now = Date.now();
+    for (const [id, session] of global.inMemoryPresence!.entries()) {
+      if (now - session.lastSeen > 60000) {
+        global.inMemoryPresence!.delete(id);
+      }
+    }
+    return global.inMemoryPresence!.size;
+  },
   clear() {
     global.inMemoryGameRuns = [];
     global.inMemoryUsers = [];
+    global.inMemoryPresence?.clear();
   },
 };

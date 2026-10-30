@@ -13,6 +13,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { HowToPlayModal } from "@/components/game/HowToPlayModal";
+import { OnlinePresenceBadge } from "@/components/layout/OnlinePresenceBadge";
 
 export default function HomePage() {
   return (
@@ -22,10 +23,13 @@ export default function HomePage() {
 
       {/* Hero Section */}
       <section className="container max-w-6xl px-4 pt-14 pb-14 sm:pt-20 sm:pb-20 text-center relative z-10">
-        {/* Status pill */}
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-secondary/80 border border-primary/30 text-xs font-mono text-primary mb-6 animate-pulse">
-          <span className="h-2 w-2 rounded-full bg-primary" />
-          FAST-PACED ARCADE TYPING // PROBABILITY STRATEGY
+        {/* Status pills & Online Runner Count */}
+        <div className="flex flex-wrap items-center justify-center gap-3 mb-6">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-secondary/80 border border-primary/30 text-xs font-mono text-primary animate-pulse">
+            <span className="h-2 w-2 rounded-full bg-primary" />
+            FAST-PACED ARCADE TYPING // PROBABILITY STRATEGY
+          </div>
+          <OnlinePresenceBadge />
         </div>
 
         {/* Hero Title */}
