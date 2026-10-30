@@ -8,7 +8,7 @@ import { useAuthStore } from "@/store/useAuthStore";
 import { ProbabilityEngine, SeededRandom } from "@/lib/probability/engine";
 import { soundEngine } from "@/lib/audio/soundEngine";
 import { round2 } from "@/lib/utils";
-import { PacketDefinition, PacketEvent, GameRunResult } from "@/types";
+import { PacketDefinition, PacketEvent, GameRunResult, WordPackType } from "@/types";
 
 import {
   FloatingFeedback,
@@ -149,6 +149,15 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
   const livesRef = useRef(lives);
   livesRef.current = lives;
 
+  const [wordPack, setWordPack] = useState<WordPackType>("core");
+  const wordPackRef = useRef<WordPackType>("core");
+  wordPackRef.current = wordPack;
+
+  const [slowMoActive, setSlowMoActive] = useState(false);
+  const slowMoActiveRef = useRef(false);
+  slowMoActiveRef.current = slowMoActive;
+  const slowMoTimerRef = useRef<NodeJS.Timeout | null>(null);
+
   const pausedAtRef = useRef<number>(0);
   const targetStartTimeRef = useRef<number>(Date.now());
 
@@ -165,6 +174,7 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
     packetCounter: number;
     lastSpawnTime: number;
     recentWords: string[];
+    typoMap: Record<string, number>;
   }>({
     runId: "",
     runToken: "",
@@ -177,6 +187,7 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
     packetCounter: 0,
     lastSpawnTime: 0,
     recentWords: [],
+    typoMap: {},
   });
 
   // Spawn helper: intelligently selects lane adhering to user rules:
@@ -210,12 +221,14 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
       pausedAtRef.current = Date.now();
       setGameStatus("paused");
       gameStatusRef.current = "paused";
+      soundEngine.stopSynthwave();
     } else if (gameStatusRef.current === "paused") {
       const pauseDuration = Date.now() - (pausedAtRef.current || Date.now());
       runDataRef.current.startTime += pauseDuration;
       runDataRef.current.lastSpawnTime += pauseDuration;
       setGameStatus("playing");
       gameStatusRef.current = "playing";
+      soundEngine.updateSynthwaveLayer(comboRef.current);
       setTimeout(() => {
         containerRef.current?.focus();
       }, 10);
@@ -316,7 +329,11 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
           lane,
           usedInitials,
           forcedTier,
-          usedWords
+          usedWords,
+          {
+            wordPack: wordPackRef.current,
+            playerLives: 5,
+          }
         );
         // Stagger initial progress slightly for natural flow
         pkt.durationSeconds -= i * 0.8;
@@ -336,7 +353,12 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
         packetCounter: waveCount,
         lastSpawnTime: now,
         recentWords: initialRecentWords,
+        typoMap: {},
       };
+
+      soundEngine.updateSynthwaveLayer(0);
+      slowMoActiveRef.current = false;
+      setSlowMoActive(false);
 
       setScore(0);
       scoreRef.current = 0;
@@ -371,6 +393,7 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
 
   // Handle immediate restart
   const handleRestart = useCallback(() => {
+    soundEngine.stopSynthwave();
     soundEngine.playKeyClick();
     initializeRun();
     setTimeout(() => {
@@ -431,6 +454,8 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
       // Luck score: strictly computed using expected EV and pure typing score, NOT total score
       const luckScore = round2(pureTypingTotal - expectedTotal);
 
+      soundEngine.stopSynthwave();
+
       const runResult: GameRunResult = {
         runId: run.runId,
         mode,
@@ -458,9 +483,16 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
         maxCombo: maxComboVal,
         events: run.events,
         status: "validated",
+        typoMap: run.typoMap || {},
+        wordPack: wordPackRef.current,
       };
 
       setLastRunResult(runResult);
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem("tv_last_run_typos", JSON.stringify(run.typoMap || {}));
+        } catch {}
+      }
       if (onGameOver) onGameOver(runResult);
 
       // Submit to server
@@ -483,6 +515,8 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
             events: run.events,
             endTime,
             username: usernameRef.current || "Player",
+            typoMap: run.typoMap || {},
+            wordPack: wordPackRef.current,
           }),
         });
       } catch (err) {
@@ -532,8 +566,9 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
 
       // Speed scaling: keep base falling speed consistent with difficulty at start,
       // but progressively accelerate with elapsed time and score!
+      // Decryption Overclock (Matrix Slow-Mo): drops velocity by 50% for 5s
       const speedMult = Math.min(2.4, 1.0 + elapsedSec * 0.005 + scoreRef.current * 0.00003);
-      const effectiveDt = dt * speedMult;
+      const effectiveDt = (slowMoActiveRef.current ? dt * 0.5 : dt) * speedMult;
 
       setActivePackets((prev) => {
         let current = [...prev];
@@ -579,6 +614,7 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
             ...(runDataRef.current.recentWords || []),
           ];
 
+          const hasShieldOnScreen = current.some((p) => p.specialType === "shield");
           const newPkt = ProbabilityEngine.generatePacket(
             `pkt_${runDataRef.current.packetCounter}`,
             difficulty,
@@ -587,7 +623,12 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
             lane,
             activeInitials,
             forcedTier,
-            allExcludedWords
+            allExcludedWords,
+            {
+              wordPack: wordPackRef.current,
+              playerLives: livesRef.current,
+              hasShieldOnScreen,
+            }
           );
           current.push(newPkt);
 
@@ -711,7 +752,9 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
           setTimeout(() => setGridPulse(false), 90);
           return;
         } else {
-          // Mistype
+          // Log mistyped keystroke for interactive heatmap
+          if (!runDataRef.current.typoMap) runDataRef.current.typoMap = {};
+          runDataRef.current.typoMap[upperChar] = (runDataRef.current.typoMap[upperChar] || 0) + 1;
           return;
         }
       }
@@ -734,7 +777,9 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
           targetStartTimeRef.current = Date.now();
           nextInput = prefixAttempt;
         } else {
-          // Mistype on active target: reset current target focus
+          // Mistype on active target: log error and reset current target focus
+          if (!runDataRef.current.typoMap) runDataRef.current.typoMap = {};
+          runDataRef.current.typoMap[upperChar] = (runDataRef.current.typoMap[upperChar] || 0) + 1;
           currentInputRef.current = "";
           setCurrentInput("");
           activeTargetIdRef.current = null;
@@ -793,6 +838,39 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
             setEmpCharges((c) => c + 1);
             addFeedback("⚡ EMP RESTORED!", "clean", 1, 180);
           }
+
+          // Tactical Mechanic 1: Nanite Shield Recovery
+          if (resolvedTarget.specialType === "shield") {
+            if (livesRef.current < 5) {
+              const nextLives = Math.min(5, livesRef.current + 1);
+              livesRef.current = nextLives;
+              setLives(nextLives);
+              soundEngine.playShieldRestored();
+              addFeedback("🛡️ +1 SHIELD RESTORED!", "clean", resolvedTarget.laneIndex, 280);
+            }
+          }
+
+          // Tactical Mechanic 2: Golden High Roller Reward
+          if (resolvedTarget.specialType === "high_roller") {
+            addFeedback("🌟 3X HIGH ROLLER CASHED!", "clean", resolvedTarget.laneIndex, 300);
+          }
+
+          // Tactical Mechanic 3: Decryption Overclock (Matrix Slow-Mo 5s at streaks 15, 30, 45)
+          if (nextCombo === 15 || nextCombo === 30 || nextCombo === 45) {
+            slowMoActiveRef.current = true;
+            setSlowMoActive(true);
+            soundEngine.playSlowMoPulse();
+            addFeedback("⏳ MATRIX SLOW-MO (5s)!", "clean", 1, 260);
+            if (slowMoTimerRef.current) clearTimeout(slowMoTimerRef.current);
+            slowMoTimerRef.current = setTimeout(() => {
+              slowMoActiveRef.current = false;
+              setSlowMoActive(false);
+            }, 5000);
+          }
+
+          // Dynamic Layered Synthwave Audio: Escalate musical layers with streak
+          soundEngine.updateSynthwaveLayer(nextCombo);
+
           const bonusTag = speedBonusPct > 0 ? ` (+${speedBonusPct}% SPD)` : "";
           addFeedback(
             `+${pointsDelta} PTS (${comboMultiplier}x${bonusTag})`,
@@ -810,6 +888,11 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
           triggerShake();
           comboRef.current = 0;
           setCombo(0);
+          soundEngine.updateSynthwaveLayer(0);
+
+          if (resolvedTarget.specialType === "high_roller") {
+            addFeedback("💥 HIGH ROLLER GLITCH!", "corrupted", resolvedTarget.laneIndex, 300);
+          }
 
           // FAIR SHIELD RULE:
           // 🟢 SAFE (< 0.25) and 🟡 CAUTION (0.25 - 0.49) packets NEVER COST A SHIELD on corruption!
@@ -872,6 +955,7 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
           speedBonusPoints,
           wpm: packetWpm,
           accuracy: 96,
+          specialType: resolvedTarget.specialType,
         });
 
         // Remove packet from active list
@@ -891,6 +975,10 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
   // Auto-focus container on mount and when entering playing or ready states
   useEffect(() => {
     containerRef.current?.focus();
+    return () => {
+      soundEngine.stopSynthwave();
+      if (slowMoTimerRef.current) clearTimeout(slowMoTimerRef.current);
+    };
   }, []);
 
   useEffect(() => {
@@ -1105,11 +1193,21 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
           </div>
         ))}
 
+        {/* Decryption Overclock Matrix Slow-Mo Banner */}
+        {slowMoActive && (
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 px-4 py-1.5 rounded-full bg-emerald-950/90 border border-emerald-400 text-emerald-300 font-mono text-xs font-black animate-pulse shadow-[0_0_25px_rgba(16,185,129,0.5)] flex items-center gap-2 pointer-events-none">
+            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
+            ⏳ DECRYPTION OVERCLOCK: MATRIX SLOW-MO 0.5X ACTIVE
+          </div>
+        )}
+
         {/* Ready / Start Overlay */}
         {gameStatus === "ready" && (
           <GameReadyOverlay
             mode={mode}
             difficulty={difficulty}
+            wordPack={wordPack}
+            onSelectWordPack={setWordPack}
             onStart={() => {
               initializeRun();
               setTimeout(() => {

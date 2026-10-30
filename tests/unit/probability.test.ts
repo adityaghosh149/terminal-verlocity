@@ -135,30 +135,48 @@ describe("ProbabilityEngine", () => {
   it("sets advertised reward in variable ranges per difficulty and enforces symmetric penalty", () => {
     const rng = new SeededRandom("test-reward-ranges");
 
-    // Easy: reward must fall within [40, 70]
+    // Easy: reward must fall within [40, 70] (or 3x if high_roller)
     for (let i = 0; i < 20; i++) {
       const easyPkt = ProbabilityEngine.generatePacket(`p_easy_${i}`, "easy", rng, 1000);
       expect(easyPkt.code.length).toBe(4);
-      expect(easyPkt.reward).toBeGreaterThanOrEqual(40);
-      expect(easyPkt.reward).toBeLessThanOrEqual(70);
+      if (easyPkt.specialType === "high_roller") {
+        expect(easyPkt.reward).toBeGreaterThanOrEqual(40 * 3);
+        expect(easyPkt.reward).toBeLessThanOrEqual(70 * 3);
+        expect(easyPkt.corruptionProbability).toBe(0.5);
+      } else {
+        expect(easyPkt.reward).toBeGreaterThanOrEqual(40);
+        expect(easyPkt.reward).toBeLessThanOrEqual(70);
+      }
       expect(easyPkt.corruptionPenalty).toBe(easyPkt.reward);
     }
 
-    // Medium: reward must fall within [75, 130]
+    // Medium: reward must fall within [75, 130] (or 3x if high_roller)
     for (let i = 0; i < 20; i++) {
       const medPkt = ProbabilityEngine.generatePacket(`p_med_${i}`, "medium", rng, 1000);
       expect(medPkt.code.length).toBe(5);
-      expect(medPkt.reward).toBeGreaterThanOrEqual(75);
-      expect(medPkt.reward).toBeLessThanOrEqual(130);
+      if (medPkt.specialType === "high_roller") {
+        expect(medPkt.reward).toBeGreaterThanOrEqual(75 * 3);
+        expect(medPkt.reward).toBeLessThanOrEqual(130 * 3);
+        expect(medPkt.corruptionProbability).toBe(0.5);
+      } else {
+        expect(medPkt.reward).toBeGreaterThanOrEqual(75);
+        expect(medPkt.reward).toBeLessThanOrEqual(130);
+      }
       expect(medPkt.corruptionPenalty).toBe(medPkt.reward);
     }
 
-    // Hard: reward must fall within [140, 240]
+    // Hard: reward must fall within [140, 240] (or 3x if high_roller)
     for (let i = 0; i < 20; i++) {
       const hardPkt = ProbabilityEngine.generatePacket(`p_hard_${i}`, "hard", rng, 1000);
       expect(hardPkt.code.length).toBe(6);
-      expect(hardPkt.reward).toBeGreaterThanOrEqual(140);
-      expect(hardPkt.reward).toBeLessThanOrEqual(240);
+      if (hardPkt.specialType === "high_roller") {
+        expect(hardPkt.reward).toBeGreaterThanOrEqual(140 * 3);
+        expect(hardPkt.reward).toBeLessThanOrEqual(240 * 3);
+        expect(hardPkt.corruptionProbability).toBe(0.5);
+      } else {
+        expect(hardPkt.reward).toBeGreaterThanOrEqual(140);
+        expect(hardPkt.reward).toBeLessThanOrEqual(240);
+      }
       expect(hardPkt.corruptionPenalty).toBe(hardPkt.reward);
     }
 
@@ -167,5 +185,51 @@ describe("ProbabilityEngine", () => {
     expect(testPkt.reward).toBeGreaterThan(0);
     expect(-testPkt.corruptionPenalty).toBeLessThan(0);
     expect(-testPkt.corruptionPenalty).toBe(-testPkt.reward);
+  });
+
+  it("spawns shield recovery packets when player lives <= 2", () => {
+    const rng = new SeededRandom("shield-test-seed");
+    let shieldSpawned = false;
+
+    // Run 50 iterations with playerLives = 2
+    for (let i = 0; i < 50; i++) {
+      const pkt = ProbabilityEngine.generatePacket(
+        `shield_${i}`,
+        "medium",
+        rng,
+        1000,
+        0,
+        [],
+        undefined,
+        [],
+        { playerLives: 2 }
+      );
+      if (pkt.specialType === "shield") {
+        shieldSpawned = true;
+        // Shield packets are safe
+        expect(pkt.corruptionProbability).toBeLessThanOrEqual(0.20);
+        break;
+      }
+    }
+    expect(shieldSpawned).toBe(true);
+  });
+
+  it("supports themed word packs with strict difficulty lengths", () => {
+    const packs: Array<"developer" | "cybersecurity" | "sysadmin"> = [
+      "developer",
+      "cybersecurity",
+      "sysadmin",
+    ];
+
+    for (const pack of packs) {
+      const rng = new SeededRandom(`pack-${pack}`);
+      const easyPkt = ProbabilityEngine.generatePacket("p1", "easy", rng, 1000, 0, [], undefined, [], { wordPack: pack });
+      const medPkt = ProbabilityEngine.generatePacket("p2", "medium", rng, 1000, 0, [], undefined, [], { wordPack: pack });
+      const hardPkt = ProbabilityEngine.generatePacket("p3", "hard", rng, 1000, 0, [], undefined, [], { wordPack: pack });
+
+      expect(easyPkt.code.length).toBe(4);
+      expect(medPkt.code.length).toBe(5);
+      expect(hardPkt.code.length).toBe(6);
+    }
   });
 });

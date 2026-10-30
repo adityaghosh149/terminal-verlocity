@@ -30,6 +30,8 @@ export interface IGameRun extends Document {
   maxCombo: number;
   status: "validated" | "rejected";
   validationReason?: string;
+  typoMap?: Record<string, number>;
+  wordPack?: string;
   events: PacketEvent[];
   createdAt: Date;
   updatedAt: Date;
@@ -159,6 +161,15 @@ const GameRunSchema = new Schema<IGameRun>(
     },
     validationReason: {
       type: String,
+    },
+    typoMap: {
+      type: Map,
+      of: Number,
+      default: {},
+    },
+    wordPack: {
+      type: String,
+      default: "core",
     },
     events: {
       type: [Object],

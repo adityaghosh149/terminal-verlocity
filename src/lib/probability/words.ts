@@ -868,3 +868,87 @@ export const HARD_WORDS = [
   "YELLOW",
   "ZIPPED"
 ] as const;
+
+import { Difficulty, WordPackType } from "@/types";
+
+export const THEMED_WORD_PACKS: Record<
+  "developer" | "cybersecurity" | "sysadmin",
+  Record<Difficulty, string[]>
+> = {
+  developer: {
+    easy: [
+      "CODE", "BYTE", "BOOL", "LOOP", "FUNC", "NODE", "NULL", "TRUE", "HEAP", "MATH",
+      "SYNC", "EVAL", "GOTO", "CHAR", "LONG", "CAST", "DATA", "FILE", "JSON", "HASH",
+      "PORT", "HOST", "PROP", "INIT", "TEST", "WARN", "TYPE", "USER", "VIEW", "VARS"
+    ],
+    medium: [
+      "ASYNC", "AWAIT", "CONST", "CLASS", "FETCH", "ROUTE", "SCOPE", "PROTO", "MACRO", "STACK",
+      "BUILD", "PARSE", "EVENT", "DEBUG", "PROXY", "REGEX", "FLOAT", "QUERY", "INDEX", "STATE",
+      "HOOKS", "INPUT", "VALUE", "PARAM", "ERROR", "PATCH", "CACHE", "ARRAY", "CATCH", "THROW"
+    ],
+    hard: [
+      "RETURN", "STRUCT", "LAMBDA", "IMPORT", "EXPORT", "OBJECT", "BUFFER", "SCRIPT", "THREAD", "MODULE",
+      "SOCKET", "STRING", "NUMBER", "ROUTER", "ASSERT", "CONFIG", "SCHEMA", "RENDER", "OUTPUT", "MEMORY",
+      "CLIENT", "SERVER", "COMMIT", "BRANCH", "FILTER", "ACTION", "REDUCE", "SYNTAX", "METHOD", "VIRTUL"
+    ]
+  },
+  cybersecurity: {
+    easy: [
+      "AUTH", "SAFE", "RISK", "LEAK", "LOCK", "ROOT", "WORM", "SPAM", "TRAP", "SCAN",
+      "PORT", "PING", "HASH", "SIGN", "CERT", "KEYS", "DUMP", "VOID", "WALL", "SHUT",
+      "PEER", "ZERO", "PASS", "FLAG", "SNIF", "HACK", "WIRE", "DARK", "BYTE", "NODE"
+    ],
+    medium: [
+      "CYBER", "TOKEN", "GUARD", "SNIFF", "SPOOF", "VIRUS", "PHISH", "HONEY", "PATCH", "ALERT",
+      "VAULT", "STEAL", "CRACK", "AUDIT", "BLOCK", "CLOAK", "PROXY", "RESET", "DECOY", "TRACE",
+      "PROBE", "INTRU", "DEFND", "MALIC", "HIJCK", "SECRT", "VECTR", "SHRED"
+    ],
+    hard: [
+      "TROJAN", "CIPHER", "BREACH", "BOTNET", "PACKET", "CRYPTO", "SHIELD", "ATTACK", "HACKER", "THREAT",
+      "VECTOR", "ZOMBIE", "BYPASS", "FILTER", "DEFEND", "TUNNEL", "SHADOW", "TAMPER", "INJECT", "ROOTKT",
+      "DECRYP", "ENCRYP", "PAYLOD", "RADIUS", "SNIFFR", "DEFENS", "MALWAR", "ZRODAY"
+    ]
+  },
+  sysadmin: {
+    easy: [
+      "SUDO", "GREP", "KILL", "BASH", "CRON", "NOHP", "PING", "PIPE", "MORE", "LESS",
+      "TAIL", "HEAD", "FIND", "ECHO", "AWK1", "SED1", "DIFF", "NICE", "USER", "ROOT",
+      "DISK", "SWAP", "FILE", "PATH", "HOST", "LINK", "NAME", "TERM", "PORT", "TTY1"
+    ],
+    medium: [
+      "CHMOD", "CHOWN", "MKDIR", "RMDIR", "TOUCH", "UNAME", "DMESG", "LSBLK", "FDISK", "MOUNT",
+      "NGINX", "REDIS", "SPAWN", "SHELL", "POSIX", "DRIVE", "INODE", "GROUP", "ALIAS", "RSYNC",
+      "PANIC", "TOPAZ", "ENVIR", "TARCV", "LOGIN", "CHCON", "VHOST", "PORTS"
+    ],
+    hard: [
+      "DOCKER", "KERNEL", "SYSTEM", "DAEMON", "SYSLOG", "UPTIME", "SOCKET", "SERVER", "DEBIAN", "FEDORA",
+      "UBUNTU", "APACHE", "SHADOW", "MODULE", "PACMAN", "REBOOT", "STDOUT", "STDERR", "PASSWD", "BINARY",
+      "CHROOT", "JOURNL", "APPARM", "TARBAL", "NETSTT", "IPTABL", "CRONDT", "SYSCTL"
+    ]
+  }
+};
+
+/**
+ * Returns candidate words for a specific word pack and difficulty level.
+ */
+export function getWordsForPackAndDifficulty(
+  pack: WordPackType = "core",
+  difficulty: Difficulty = "medium"
+): string[] {
+  if (pack === "core" || !(pack in THEMED_WORD_PACKS)) {
+    if (difficulty === "easy") return EASY_WORDS as unknown as string[];
+    if (difficulty === "hard") return HARD_WORDS as unknown as string[];
+    return MEDIUM_WORDS as unknown as string[];
+  }
+
+  const themedList = THEMED_WORD_PACKS[pack as keyof typeof THEMED_WORD_PACKS][difficulty];
+  const coreList =
+    difficulty === "easy"
+      ? (EASY_WORDS as unknown as string[])
+      : difficulty === "hard"
+      ? (HARD_WORDS as unknown as string[])
+      : (MEDIUM_WORDS as unknown as string[]);
+
+  // Blend themed words prominently with core words for infinite vocabulary variety
+  return Array.from(new Set([...themedList, ...coreList]));
+}

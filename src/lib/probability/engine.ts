@@ -1,11 +1,11 @@
-import { Difficulty, PacketDefinition, PacketOutcome, PacketEvent } from "@/types";
+import { Difficulty, PacketDefinition, PacketOutcome, PacketEvent, WordPackType } from "@/types";
 import { round2 } from "@/lib/utils";
 
 import { SeededRandom } from "./prng";
-import { EASY_WORDS, MEDIUM_WORDS, HARD_WORDS } from "./words";
+import { EASY_WORDS, MEDIUM_WORDS, HARD_WORDS, getWordsForPackAndDifficulty } from "./words";
 
 // Re-export for complete backward compatibility
-export { SeededRandom, EASY_WORDS, MEDIUM_WORDS, HARD_WORDS };
+export { SeededRandom, EASY_WORDS, MEDIUM_WORDS, HARD_WORDS, getWordsForPackAndDifficulty };
 
 /**
  * Probability Engine - Authoritative mathematical calculations
@@ -67,11 +67,18 @@ export class ProbabilityEngine {
     laneIndex: number = 0,
     excludeInitials: string[] = [],
     forcedTier?: "safe" | "caution" | "danger",
-    excludeWords: string[] = []
+    excludeWords: string[] = [],
+    options?: {
+      wordPack?: WordPackType;
+      playerLives?: number;
+      hasShieldOnScreen?: boolean;
+    }
   ): PacketDefinition {
+    const rawWords = getWordsForPackAndDifficulty(options?.wordPack || "core", difficulty);
+
     const config = {
       easy: {
-        words: EASY_WORDS,
+        words: rawWords,
         pMin: 0.10,
         pMax: 0.25,
         durationSeconds: 11,
@@ -85,7 +92,7 @@ export class ProbabilityEngine {
         },
       },
       medium: {
-        words: MEDIUM_WORDS,
+        words: rawWords,
         pMin: 0.12,
         pMax: 0.45,
         durationSeconds: 8.5,
@@ -99,7 +106,7 @@ export class ProbabilityEngine {
         },
       },
       hard: {
-        words: HARD_WORDS,
+        words: rawWords,
         pMin: 0.15,
         pMax: 0.65,
         durationSeconds: 6.5,
@@ -130,10 +137,31 @@ export class ProbabilityEngine {
     const wordsPool = availableWords.length > 0 ? availableWords : candidatePool;
     const code = rng.pick(wordsPool);
 
+    // Special Packet Determination:
+    // 1. Nanite Shield Recovery: When player has <= 2 shields and no shield is currently falling
+    // 2. Golden High Roller: 6% natural chance for an ultra-rewarding 3x packet with coin-flip p=0.50
+    let specialType: "standard" | "shield" | "high_roller" = "standard";
+    const canSpawnShield = options?.playerLives !== undefined && options.playerLives <= 2 && !options.hasShieldOnScreen;
+
+    if (canSpawnShield && rng.next() < 0.28) {
+      specialType = "shield";
+    } else if (rng.next() < 0.06) {
+      specialType = "high_roller";
+    }
+
     let corruptionProbability: number;
     let reward: number;
 
-    if (forcedTier === "safe") {
+    if (specialType === "shield") {
+      // Shield recovery packets are always safe and restore a depleted shield on clean catch
+      corruptionProbability = 0.10;
+      reward = rng.nextInt(config.rewardRange.safe[0], config.rewardRange.safe[1]);
+    } else if (specialType === "high_roller") {
+      // Golden High Roller: 50% coin-flip risk, 3x Advertised Reward!
+      corruptionProbability = 0.50;
+      const baseDangerReward = rng.nextInt(config.rewardRange.danger[0], config.rewardRange.danger[1]);
+      reward = baseDangerReward * 3;
+    } else if (forcedTier === "safe") {
       corruptionProbability = Number(rng.nextFloat(0.10, 0.20).toFixed(2));
       reward = rng.nextInt(config.rewardRange.safe[0], config.rewardRange.safe[1]);
     } else if (forcedTier === "caution") {
@@ -178,6 +206,7 @@ export class ProbabilityEngine {
     // Add small natural variance (-0.6s to +0.6s) so multiple packets never expire on the exact same millisecond
     const durationVariance = round2(rng.nextFloat(-0.6, 0.6));
     const packetDuration = Math.max(4.5, round2(config.durationSeconds + durationVariance));
+    const packetSpeed = specialType === "shield" ? Math.round(config.speed * 1.25) : config.speed;
 
     return {
       id,
@@ -188,11 +217,12 @@ export class ProbabilityEngine {
       interceptionCost,
       expectedValue,
       durationSeconds: packetDuration,
-      speed: config.speed,
+      speed: packetSpeed,
       riskRating,
       valuePerSecond,
       spawnTimeMs,
       laneIndex,
+      specialType,
     };
   }
 

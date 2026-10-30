@@ -25,6 +25,8 @@ export interface StoredRun {
   maxCombo: number;
   status: "validated" | "rejected";
   validationReason?: string;
+  typoMap?: Record<string, number>;
+  wordPack?: string;
   createdAt: Date;
 }
 

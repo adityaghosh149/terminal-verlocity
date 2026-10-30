@@ -33,6 +33,8 @@ import {
   Area,
   Legend,
 } from "recharts";
+import { TypoHeatmap } from "@/components/dashboard/TypoHeatmap";
+import { ArchetypeCard } from "@/components/dashboard/ArchetypeCard";
 import { useAuthStore } from "@/store/useAuthStore";
 import { formatNumber, round2 } from "@/lib/utils";
 
@@ -254,6 +256,16 @@ export default function ProfileDashboardPage() {
             🟢 {metrics.totalClean || 0} / 🔴 {metrics.totalCorrupted || 0}
           </div>
         </div>
+      </div>
+
+      {/* Player Risk Archetype Classification */}
+      <div className="mb-8">
+        <ArchetypeCard
+          wpm={metrics.avgWpm}
+          accuracy={metrics.avgAccuracy}
+          dangerRatio={metrics.dangerRatio}
+          missedCount={metrics.totalMissed}
+        />
       </div>
 
       {/* Improvement Graph Section */}
@@ -595,6 +607,14 @@ export default function ProfileDashboardPage() {
             Play games to generate your improvement trajectory graph!
           </div>
         )}
+      </div>
+
+      {/* Interactive QWERTY Typo Heatmap */}
+      <div className="mb-8">
+        <TypoHeatmap
+          typoMap={metrics.typoMap}
+          totalKeystrokes={metrics.lifetimeScore}
+        />
       </div>
 
       {/* Game-by-Game Breakdown Table */}

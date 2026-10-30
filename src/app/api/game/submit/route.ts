@@ -28,6 +28,8 @@ const SubmitRunSchema = z.object({
   events: z.array(z.any()),
   endTime: z.number(),
   username: z.string().max(25).optional(),
+  typoMap: z.record(z.string(), z.number()).optional(),
+  wordPack: z.string().optional(),
 });
 
 const JWT_SECRET = process.env.JWT_ACCESS_SECRET || "fallback_run_signing_secret_min_32_chars";
@@ -68,6 +70,8 @@ export async function POST(req: NextRequest) {
       events,
       endTime,
       username,
+      typoMap,
+      wordPack,
     } = parsed.data;
 
     // 1. Verify tamper-evident run authorization token
@@ -217,6 +221,8 @@ export async function POST(req: NextRequest) {
       maxCombo,
       status,
       validationReason,
+      typoMap: typoMap || {},
+      wordPack: wordPack || "core",
       createdAt: new Date(),
     };
 

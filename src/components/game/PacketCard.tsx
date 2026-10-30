@@ -27,6 +27,10 @@ export function PacketCard({
   const topY = progress * maxTravel + 15;
   const lanePercent = LANES[packet.laneIndex % 4];
 
+  // Special Tactical Tiers
+  const isShield = packet.specialType === "shield";
+  const isHighRoller = packet.specialType === "high_roller";
+
   // Standardized Risk Tiers
   const isSafe = packet.corruptionProbability < 0.25;
   const isCaution = packet.corruptionProbability >= 0.25 && packet.corruptionProbability < 0.50;
@@ -47,6 +51,10 @@ export function PacketCard({
       className={`absolute w-48 sm:w-52 rounded-xl border p-2.5 backdrop-blur-md cursor-pointer select-none will-change-transform transition-[border-color,box-shadow] duration-150 ${
         isTarget
           ? "border-primary bg-primary/20 ring-2 ring-primary scale-105 z-20 glow-primary shadow-2xl"
+          : isShield
+          ? "border-cyan-400 bg-cyan-950/80 shadow-[0_0_20px_rgba(6,182,212,0.6)] animate-pulse z-15"
+          : isHighRoller
+          ? "border-yellow-400 bg-amber-950/85 shadow-[0_0_25px_rgba(250,204,21,0.7)] ring-1 ring-yellow-400 z-15"
           : isSafe
           ? "border-emerald-500/50 bg-card/90 hover:border-emerald-400 z-10 shadow-lg"
           : isCaution
@@ -56,19 +64,35 @@ export function PacketCard({
     >
       {/* Header: Reward & Risk Tag */}
       <div className="flex items-center justify-between text-[11px] mb-1 font-mono">
-        <span className="font-bold text-foreground font-display text-xs">
+        <span
+          className={`font-bold font-display text-xs ${
+            isHighRoller ? "text-yellow-300 font-black animate-pulse" : isShield ? "text-cyan-300 font-black" : "text-foreground"
+          }`}
+        >
           +{packet.reward} PTS
         </span>
         <span
           className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
-            isSafe
+            isShield
+              ? "bg-cyan-500/30 text-cyan-300 border border-cyan-400 animate-pulse font-black"
+              : isHighRoller
+              ? "bg-yellow-500/30 text-yellow-300 border border-yellow-400 font-black shadow-[0_0_8px_rgba(250,204,21,0.5)]"
+              : isSafe
               ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40"
               : isCaution
               ? "bg-amber-500/20 text-amber-400 border border-amber-500/40"
               : "bg-rose-500/20 text-rose-400 border border-rose-500/40"
           }`}
         >
-          {isSafe ? "🟢 SAFE" : isCaution ? "🟡 CAUTION" : "🔴 DANGER (-1 🛡️)"}
+          {isShield
+            ? "🛡️ +1 SHIELD"
+            : isHighRoller
+            ? "🌟 3X HIGH ROLLER"
+            : isSafe
+            ? "🟢 SAFE"
+            : isCaution
+            ? "🟡 CAUTION"
+            : "🔴 DANGER (-1 🛡️)"}
         </span>
       </div>
 

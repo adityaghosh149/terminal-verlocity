@@ -103,6 +103,29 @@ export async function GET(req: NextRequest) {
     const totalMissed = rawRuns.reduce((sum, r) => sum + (r.missedCount || 0), 0);
     const level = Math.floor(Math.sqrt(lifetimeScore / 60)) + 1;
 
+    // Aggregate typo telemetry and risk preference across games
+    const aggregatedTypoMap: Record<string, number> = {};
+    let totalInterceptedPackets = 0;
+    let totalDangerIntercepted = 0;
+
+    for (const r of rawRuns) {
+      if (r.typoMap) {
+        const tMap = r.typoMap instanceof Map ? Object.fromEntries(r.typoMap) : r.typoMap;
+        for (const [k, v] of Object.entries(tMap)) {
+          aggregatedTypoMap[k] = (aggregatedTypoMap[k] || 0) + (Number(v) || 0);
+        }
+      }
+      totalInterceptedPackets += (r.packetsCaptured || 0);
+      const events = (r.events || []) as any[];
+      for (const e of events) {
+        if (e.action === "intercepted" && ((e.corruptionProbability && e.corruptionProbability >= 0.50) || e.specialType === "high_roller")) {
+          totalDangerIntercepted++;
+        }
+      }
+    }
+
+    const dangerRatio = totalInterceptedPackets > 0 ? round2(totalDangerIntercepted / totalInterceptedPackets) : 0.15;
+
     // Detailed Game-by-Game Breakdown
     const detailedRuns = rawRuns.map((run, idx) => {
       const events = (run.events || []) as any[];
@@ -208,6 +231,8 @@ export async function GET(req: NextRequest) {
         totalClean,
         totalCorrupted,
         totalMissed,
+        typoMap: aggregatedTypoMap,
+        dangerRatio,
       },
       improvementHistory,
       runs: detailedRuns,

@@ -2,6 +2,12 @@ export type GameMode = "classic" | "endless" | "daily";
 export type Difficulty = "easy" | "medium" | "hard";
 export type HudMode = "minimal" | "standard" | "analytical";
 export type Theme = "midnight" | "cyberpunk" | "terminal" | "amber" | "light";
+export type WordPackType = "core" | "developer" | "cybersecurity" | "sysadmin";
+export type PlayerArchetype =
+  | "The Calculated Strategist"
+  | "The Speed Demon"
+  | "The High Roller"
+  | "The Zen Master";
 
 export type PacketOutcome = "clean" | "corrupted" | "missed" | "ignored";
 
@@ -19,6 +25,7 @@ export interface PacketDefinition {
   valuePerSecond: number;    // EV / estimated typing duration
   spawnTimeMs: number;
   laneIndex: number;         // 0 to 3 horizontal column
+  specialType?: "standard" | "shield" | "high_roller";
 }
 
 export interface PacketEvent {
@@ -37,6 +44,7 @@ export interface PacketEvent {
   speedBonusPoints?: number;
   wpm: number;
   accuracy: number;
+  specialType?: "standard" | "shield" | "high_roller";
 }
 
 export interface GameRunResult {
@@ -67,6 +75,9 @@ export interface GameRunResult {
   maxCombo: number;
   events: PacketEvent[];
   status: "validated" | "rejected";
+  typoMap?: Record<string, number>;
+  archetype?: PlayerArchetype;
+  wordPack?: WordPackType;
 }
 
 export interface UserProfile {
