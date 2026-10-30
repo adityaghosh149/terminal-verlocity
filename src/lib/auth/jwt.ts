@@ -4,6 +4,21 @@ const ACCESS_SECRET = process.env.JWT_ACCESS_SECRET || "fallback_access_jwt_secr
 const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || "fallback_refresh_jwt_secret_min_32_chars_long";
 const ISSUER = process.env.JWT_ISSUER || "terminal-velocity.app";
 const AUDIENCE = process.env.JWT_AUDIENCE || "terminal-velocity-players";
+export const ACCESS_EXPIRY = process.env.JWT_ACCESS_EXPIRY || "15m";
+export const REFRESH_EXPIRY = process.env.JWT_REFRESH_EXPIRY || "30d";
+
+export function parseDurationToSeconds(duration: string, defaultSeconds: number): number {
+  if (!duration) return defaultSeconds;
+  const match = String(duration).trim().match(/^(\d+)\s*([smhd])$/i);
+  if (!match) return defaultSeconds;
+  const val = parseInt(match[1], 10);
+  const unit = match[2].toLowerCase();
+  if (unit === "s") return val;
+  if (unit === "m") return val * 60;
+  if (unit === "h") return val * 3600;
+  if (unit === "d") return val * 86400;
+  return defaultSeconds;
+}
 
 const getAccessKey = () => new TextEncoder().encode(ACCESS_SECRET);
 const getRefreshKey = () => new TextEncoder().encode(REFRESH_SECRET);
@@ -36,7 +51,7 @@ export async function signAccessToken(payload: {
     .setIssuedAt()
     .setIssuer(ISSUER)
     .setAudience(AUDIENCE)
-    .setExpirationTime("15m")
+    .setExpirationTime(ACCESS_EXPIRY)
     .sign(getAccessKey());
 }
 
@@ -56,7 +71,7 @@ export async function signRefreshToken(payload: {
     .setIssuedAt()
     .setIssuer(ISSUER)
     .setAudience(AUDIENCE)
-    .setExpirationTime("30d")
+    .setExpirationTime(REFRESH_EXPIRY)
     .sign(getRefreshKey());
 }
 
@@ -99,13 +114,13 @@ export const cookieOptions = {
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax" as const,
     path: "/",
-    maxAge: 15 * 60, // 15 minutes
+    maxAge: parseDurationToSeconds(ACCESS_EXPIRY, 15 * 60), // defaults to 15 minutes
   },
   refresh: {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax" as const,
     path: "/",
-    maxAge: 30 * 24 * 60 * 60, // 30 days
+    maxAge: parseDurationToSeconds(REFRESH_EXPIRY, 30 * 24 * 60 * 60), // defaults to 30 days
   },
 };

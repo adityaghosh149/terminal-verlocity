@@ -159,14 +159,8 @@ export async function PATCH(req: NextRequest) {
       user: updatedUser,
     });
 
-    res.cookies.set(ACCESS_COOKIE_NAME, accessToken, {
-      ...cookieOptions,
-      maxAge: 15 * 60,
-    });
-    res.cookies.set(REFRESH_COOKIE_NAME, refreshToken, {
-      ...cookieOptions,
-      maxAge: 30 * 24 * 60 * 60,
-    });
+    res.cookies.set(ACCESS_COOKIE_NAME, accessToken, cookieOptions.access);
+    res.cookies.set(REFRESH_COOKIE_NAME, refreshToken, cookieOptions.refresh);
 
     return res;
   } catch (err) {
