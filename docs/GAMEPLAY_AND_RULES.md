@@ -32,16 +32,18 @@ Every completed run calculates three distinct score components that sum **exactl
 
 $$\text{Total Score} = \text{Pure Typing Score} + \text{Multiplier Score} + \text{Speed Bonus Score}$$
 
-### 1. Advertised Reward & Pure Typing Score
-The **Advertised Reward** displayed on every packet is strictly its **Pure Typing Score**:
-$$\text{Advertised Reward} = \text{Pure Typing Score} = 10 \times \text{Character Length of Word}$$
-* 🟢 **4-Letter Word (Easy):** Advertised as **`+40 PTS`**
-* 🟡 **5-Letter Word (Medium):** Advertised as **`+50 PTS`**
-* 🔴 **6-Letter Word (Hard):** Advertised as **`+60 PTS`**
+### 1. Advertised Reward Ranges & Pure Typing Score
+The **Advertised Reward** displayed on every packet represents its base **Pure Typing Score**, dynamically sampled from a calibrated range per difficulty and risk tier:
 
-**Interception Outcome:**
-* **Non-Corrupted (Clean) Packets:** You receive **positive** points ($+\text{Pure Typing Score}$), plus your clean streak multiplier and typing speed bonus.
-* **Corrupted Packets:** You receive **negative** points ($-\text{Pure Typing Score}$), your clean streak multiplier resets to zero, and danger words risk losing 1 shield.
+| Difficulty | Word Length | Advertised Reward Range | Safe Tier (< 25%) | Caution Tier (25%–49%) | Danger Tier (≥ 50%) |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| 🟢 **Easy** | 4 letters | **40 to 70 PTS** | 40–50 PTS | 50–60 PTS | 60–70 PTS |
+| 🟡 **Medium** | 5 letters | **75 to 130 PTS** | 75–90 PTS | 90–110 PTS | 110–130 PTS |
+| 🔴 **Hard** | 6 letters | **140 to 240 PTS** | 140–170 PTS | 170–205 PTS | 205–240 PTS |
+
+**Interception Outcomes:**
+* **Non-Corrupted (Clean) Packets:** You receive **positive** pure score ($+\text{Advertised Reward}$), plus clean streak multipliers and speed bonuses.
+* **Corrupted Packets:** You receive **negative** penalty ($-\text{Advertised Reward}$), your clean streak multiplier resets to zero, and danger words risk losing 1 shield.
 
 ### 2. Clean Streak Multipliers
 Typing clean words consecutively without errors unlocks massive point multipliers:

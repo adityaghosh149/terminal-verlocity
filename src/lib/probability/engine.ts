@@ -76,6 +76,13 @@ export class ProbabilityEngine {
         pMax: 0.25,
         durationSeconds: 11,
         speed: 48,
+        rewardRange: {
+          min: 40,
+          max: 70,
+          safe: [40, 50],
+          caution: [50, 60],
+          danger: [60, 70],
+        },
       },
       medium: {
         words: MEDIUM_WORDS,
@@ -83,6 +90,13 @@ export class ProbabilityEngine {
         pMax: 0.45,
         durationSeconds: 8.5,
         speed: 68,
+        rewardRange: {
+          min: 75,
+          max: 130,
+          safe: [75, 90],
+          caution: [90, 110],
+          danger: [110, 130],
+        },
       },
       hard: {
         words: HARD_WORDS,
@@ -90,6 +104,13 @@ export class ProbabilityEngine {
         pMax: 0.65,
         durationSeconds: 6.5,
         speed: 92,
+        rewardRange: {
+          min: 140,
+          max: 240,
+          safe: [140, 170],
+          caution: [170, 205],
+          danger: [205, 240],
+        },
       },
     }[difficulty];
 
@@ -109,32 +130,38 @@ export class ProbabilityEngine {
     const wordsPool = availableWords.length > 0 ? availableWords : candidatePool;
     const code = rng.pick(wordsPool);
 
-    // Advertised Reward is strictly the Pure Typing Score (10 * character length)
-    // Non-corrupted packets award positive pure score (+reward)
-    // Corrupted packets penalize with negative score (-corruptionPenalty)
-    const pureTypingScore = code.length * 10;
-    const reward = pureTypingScore;
-    const corruptionPenalty = pureTypingScore;
-
     let corruptionProbability: number;
+    let reward: number;
 
     if (forcedTier === "safe") {
       corruptionProbability = Number(rng.nextFloat(0.10, 0.20).toFixed(2));
+      reward = rng.nextInt(config.rewardRange.safe[0], config.rewardRange.safe[1]);
     } else if (forcedTier === "caution") {
       corruptionProbability = Number(rng.nextFloat(0.25, 0.40).toFixed(2));
+      reward = rng.nextInt(config.rewardRange.caution[0], config.rewardRange.caution[1]);
     } else if (forcedTier === "danger") {
       corruptionProbability = Number(rng.nextFloat(0.50, 0.65).toFixed(2));
+      reward = rng.nextInt(config.rewardRange.danger[0], config.rewardRange.danger[1]);
     } else {
       // Natural distribution: 55% Safe, 35% Caution, 10% Danger
       const roll = rng.next();
       if (roll < 0.55) {
         corruptionProbability = Number(rng.nextFloat(config.pMin, Math.min(0.22, config.pMax)).toFixed(2));
+        reward = rng.nextInt(config.rewardRange.safe[0], config.rewardRange.safe[1]);
       } else if (roll < 0.90) {
         corruptionProbability = Number(rng.nextFloat(0.25, Math.min(0.42, config.pMax)).toFixed(2));
+        reward = rng.nextInt(config.rewardRange.caution[0], config.rewardRange.caution[1]);
       } else {
         corruptionProbability = Number(rng.nextFloat(0.50, config.pMax).toFixed(2));
+        reward = rng.nextInt(config.rewardRange.danger[0], config.rewardRange.danger[1]);
       }
     }
+
+    // Advertised Reward represents the Pure Typing Score yield for this packet
+    // Non-corrupted packets award positive pure score (+reward)
+    // Corrupted packets penalize with negative score (-corruptionPenalty)
+    const pureTypingScore = reward;
+    const corruptionPenalty = reward;
 
     const interceptionCost = 0;
 

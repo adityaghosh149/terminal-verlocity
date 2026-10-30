@@ -8,10 +8,10 @@ This document details the mathematical modeling, data science methodology, and s
 
 ### 1.1 Authoritative Mathematical Formulation
 Every falling data packet possesses four fundamental attributes:
-1. **Advertised Reward ($R$):** Defined strictly as the **Pure Typing Score** ($10 \times \text{word length}$). Intercepting clean awards $+R$ points.
+1. **Advertised Reward ($R$):** The base **Pure Typing Score** sampled from calibrated difficulty ranges (Easy: 40–70, Medium: 75–130, Hard: 140–240 pts) based on risk tier. Intercepting clean awards $+R$ points.
 2. **Corruption Probability ($p \in [0.10, 0.65]$):** The objective probability that the packet contains a corrupted payload.
 3. **Success Probability ($1 - p$):** The objective probability that the packet is clean.
-4. **Corruption Penalty ($C$):** Defined as the Pure Typing Score ($C = R$). Intercepting while corrupted deducts $-C$ points and resets streaks.
+4. **Corruption Penalty ($C$):** Equal to the Advertised Reward ($C = R$). Intercepting while corrupted deducts $-C$ points (negative pure score) and resets streaks.
 5. **Interception Cost ($K$):** Upfront execution cost (defaults to 0).
 
 The **Expected Value ($EV$)** represents the mathematical expectation of point return over repeated trials:
@@ -19,9 +19,9 @@ The **Expected Value ($EV$)** represents the mathematical expectation of point r
 $$\mathbb{E}[V] = (1 - p)R - pC = (1 - 2p)R$$
 
 #### Example:
-A 5-letter word (`CYBER`) has $R = 50\text{ pts}$ and $C = 50\text{ pts}$. With a corruption risk of $p = 0.20$ (20%):
-$$\mathbb{E}[V] = (1 - 2(0.20)) \times 50 = (0.60) \times 50 = +30\text{ points}$$
-If corrupted, the player receives $-50\text{ points}$. If clean, the player receives $+50\text{ points}$ (plus streak multiplier and speed bonus).
+A medium Danger word offers $R = 120\text{ pts}$ with a corruption risk of $p = 0.55$ (55%):
+$$\mathbb{E}[V] = (1 - 2(0.55)) \times 120 = (-0.10) \times 120 = -12.00\text{ points}$$
+If corrupted, the player receives $-120\text{ points}$ (and risks 1 shield). If clean, the player receives $+120\text{ points}$ pure typing score (plus clean streak multiplier and speed bonus).
 
 ---
 
