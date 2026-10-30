@@ -89,4 +89,53 @@ describe("Terminal Velocity Game Flow & 5-Shield Integrity", () => {
     const speedBonusPoints = pureTypingScore * (speedBonusPct / 100);
     expect(speedBonusPoints).toBe(50);
   });
+
+  it("calculates accuracy penalty (2 * (100 - accuracy))% on base typing score", () => {
+    const rawTyping = 1000;
+
+    // Helper formula
+    const calcPenalty = (acc: number, raw: number) => {
+      const errorRate = Math.max(0, 100 - acc);
+      const penaltyPct = Math.min(100, 2 * errorRate);
+      const penaltyScore = Math.max(0, raw * (penaltyPct / 100));
+      const netTyping = raw - penaltyScore;
+      return { penaltyPct, penaltyScore, netTyping };
+    };
+
+    // 100% Accuracy: 0% penalty
+    const p100 = calcPenalty(100, rawTyping);
+    expect(p100.penaltyPct).toBe(0);
+    expect(p100.penaltyScore).toBe(0);
+    expect(p100.netTyping).toBe(1000);
+
+    // 98% Accuracy: 2% error rate -> 4% penalty
+    const p98 = calcPenalty(98, rawTyping);
+    expect(p98.penaltyPct).toBe(4);
+    expect(p98.penaltyScore).toBe(40);
+    expect(p98.netTyping).toBe(960);
+
+    // 95% Accuracy: 5% error rate -> 10% penalty
+    const p95 = calcPenalty(95, rawTyping);
+    expect(p95.penaltyPct).toBe(10);
+    expect(p95.penaltyScore).toBe(100);
+    expect(p95.netTyping).toBe(900);
+
+    // 90% Accuracy: 10% error rate -> 20% penalty
+    const p90 = calcPenalty(90, rawTyping);
+    expect(p90.penaltyPct).toBe(20);
+    expect(p90.penaltyScore).toBe(200);
+    expect(p90.netTyping).toBe(800);
+
+    // 80% Accuracy: 20% error rate -> 40% penalty
+    const p80 = calcPenalty(80, rawTyping);
+    expect(p80.penaltyPct).toBe(40);
+    expect(p80.penaltyScore).toBe(400);
+    expect(p80.netTyping).toBe(600);
+
+    // Verification of total score invariant:
+    const multiplierScore = 350;
+    const speedBonusScore = 200;
+    const finalScore = p95.netTyping + multiplierScore + speedBonusScore;
+    expect(finalScore).toBe(1450); // (1000 - 100) + 350 + 200 = 1450
+  });
 });

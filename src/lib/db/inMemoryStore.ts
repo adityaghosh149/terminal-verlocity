@@ -9,6 +9,9 @@ export interface StoredRun {
   durationSeconds: number;
   finalScore: number;
   actualTypingScore?: number;
+  rawTypingScore?: number;
+  accuracyPenaltyPct?: number;
+  accuracyPenaltyScore?: number;
   multiplierScore?: number;
   speedBonusScore?: number;
   expectedScore?: number;
@@ -81,6 +84,9 @@ export const inMemoryStore = {
       ...run,
       finalScore: roundToTwo(run.finalScore)!,
       actualTypingScore: roundToTwo(run.actualTypingScore),
+      rawTypingScore: roundToTwo(run.rawTypingScore),
+      accuracyPenaltyPct: roundToTwo(run.accuracyPenaltyPct),
+      accuracyPenaltyScore: roundToTwo(run.accuracyPenaltyScore),
       multiplierScore: roundToTwo(run.multiplierScore),
       speedBonusScore: roundToTwo(run.speedBonusScore),
       expectedScore: roundToTwo(run.expectedScore),

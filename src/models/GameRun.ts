@@ -14,6 +14,9 @@ export interface IGameRun extends Document {
   durationSeconds: number;
   finalScore: number;
   actualTypingScore?: number;
+  rawTypingScore?: number;
+  accuracyPenaltyPct?: number;
+  accuracyPenaltyScore?: number;
   multiplierScore?: number;
   speedBonusScore?: number;
   expectedScore?: number;
@@ -94,6 +97,18 @@ const GameRunSchema = new Schema<IGameRun>(
       index: true,
     },
     actualTypingScore: {
+      type: Number,
+      default: 0,
+    },
+    rawTypingScore: {
+      type: Number,
+      default: 0,
+    },
+    accuracyPenaltyPct: {
+      type: Number,
+      default: 0,
+    },
+    accuracyPenaltyScore: {
       type: Number,
       default: 0,
     },

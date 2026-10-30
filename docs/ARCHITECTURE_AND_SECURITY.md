@@ -29,17 +29,21 @@ If corrupted, the player receives $-120\text{ points}$ (and risks 1 shield). If 
 ---
 
 ### 1.2 Exact Score Breakdown & Verification Model
-A player's final score is calculated from three mathematically discrete components, the sum of which must match the total score exactly:
+A player's final score is calculated from discrete components, the sum of which must match the total score exactly:
 
-$$\text{Total Score} = \text{Pure Typing Score} + \text{Multiplier Score} + \text{Speed Bonus Score}$$
+$$\text{Total Score} = (\text{Base Typing Score} - \text{Accuracy Penalty}) + \text{Multiplier Score} + \text{Speed Bonus Score}$$
 
-1. **Pure Typing Score:** Base points earned purely from typing advertised rewards ($+R$ for clean, $-R$ for corrupted).
-2. **Multiplier Score:** Bonus points accumulated from maintaining consecutive streaks (up to $4.0\times$).
-3. **Speed Bonus Score:** Typing speed bonus applied **strictly on the Pure Typing Score**:
-   $$\text{Speed Bonus Score} = \text{Pure Typing Score} \times \text{Speed Bonus Percentage (from WPM)}$$
-4. **Luck Metric:** Quantifies deviation from mathematical expected value:
-   $$\text{Luck} = \text{Pure Typing Score} - \text{Expected Pure Score}$$
-5. **Universal Decimal Precision:** All telemetry numbers (WPM, Accuracy %, Multipliers, Luck, Averages) are consistently rounded to **2 decimal places** across client, server, and database persistence layers.
+1. **Base Typing Score:** Base points earned purely from typing advertised rewards ($+R$ for clean, $-R$ for corrupted).
+2. **Accuracy Penalty:** Strict penalty scaling with error rate:
+   $$P_{\text{acc}} = \min(100, \max(0, 2 \times (100 - \text{Accuracy})))\%$$
+   $$\text{Accuracy Penalty Score} = \text{Base Typing Score} \times \left(\frac{P_{\text{acc}}}{100}\right)$$
+   $$\text{Net Typing Score} = \text{Base Typing Score} - \text{Accuracy Penalty Score}$$
+3. **Multiplier Score:** Bonus points accumulated from maintaining consecutive streaks (up to $4.0\times$).
+4. **Speed Bonus Score:** Typing speed bonus applied **strictly on the Net Typing Score**:
+   $$\text{Speed Bonus Score} = \text{Net Typing Score} \times \text{Speed Bonus Percentage (from WPM)}$$
+5. **Luck Metric:** Quantifies deviation from mathematical expected value:
+   $$\text{Luck} = \text{Net Typing Score} - \text{Expected Pure Score}$$
+6. **Universal Decimal Precision:** All telemetry numbers (WPM, Accuracy %, Multipliers, Luck, Averages) are consistently rounded to **2 decimal places** across client, server, and database persistence layers.
 
 ---
 

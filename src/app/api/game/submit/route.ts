@@ -18,6 +18,9 @@ const SubmitRunSchema = z.object({
   runToken: z.string(),
   finalScore: z.number(),
   actualTypingScore: z.number().optional(),
+  rawTypingScore: z.number().optional(),
+  accuracyPenaltyPct: z.number().optional(),
+  accuracyPenaltyScore: z.number().optional(),
   multiplierScore: z.number().optional(),
   speedBonusScore: z.number().optional(),
   expectedScore: z.number().optional(),
@@ -61,6 +64,9 @@ export async function POST(req: NextRequest) {
       runToken,
       finalScore,
       actualTypingScore: clientActualTyping,
+      rawTypingScore: clientRawTyping,
+      accuracyPenaltyPct: clientPenaltyPct,
+      accuracyPenaltyScore: clientPenaltyScore,
       multiplierScore: clientMultiplier,
       speedBonusScore: clientSpeedBonus,
       expectedScore: clientExpected,
@@ -175,7 +181,14 @@ export async function POST(req: NextRequest) {
     calcSpeedBonus = round2(calcSpeedBonus);
     calcExpected = round2(calcExpected);
 
-    let finalActualTyping = round2(clientActualTyping ?? calcPureTyping);
+    // Accuracy Penalty: (2 * (100 - accuracy))% on true typing score
+    const errorRate = Math.max(0, 100 - accuracy);
+    const accuracyPenaltyPct = round2(clientPenaltyPct ?? Math.min(100, 2 * errorRate));
+    const rawTypingScore = round2(clientRawTyping ?? calcPureTyping);
+    const accuracyPenaltyScore = round2(clientPenaltyScore ?? Math.max(0, rawTypingScore * (accuracyPenaltyPct / 100)));
+    const netPureTyping = round2(rawTypingScore - accuracyPenaltyScore);
+
+    let finalActualTyping = round2(clientActualTyping ?? netPureTyping);
     let finalMultiplier = round2(clientMultiplier ?? calcMultiplier);
     let finalSpeedBonus = round2(clientSpeedBonus ?? calcSpeedBonus);
     let finalExpected = round2(clientExpected ?? calcExpected);
@@ -205,6 +218,9 @@ export async function POST(req: NextRequest) {
       durationSeconds: round2(durationSeconds),
       finalScore: validFinalScore,
       actualTypingScore: finalActualTyping,
+      rawTypingScore,
+      accuracyPenaltyPct,
+      accuracyPenaltyScore,
       multiplierScore: finalMultiplier,
       speedBonusScore: finalSpeedBonus,
       expectedScore: finalExpected,

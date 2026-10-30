@@ -1,6 +1,6 @@
 # Terminal Velocity - Official Gameplay & Rules Guide
 
-Welcome to **Terminal Velocity**, a cyberpunk arcade typing game where mechanical typing speed, probabilistic decision-making, and tactical reflexes determine your survival and leaderboard rank.
+Welcome to **Terminal Velocity**, a cyberpunk arcade typing game where mechanical typing speed, probabilistic decision-making, typing accuracy, and tactical reflexes determine your survival and leaderboard rank.
 
 ---
 
@@ -65,12 +65,12 @@ The game features a procedural Web Audio synthwave sound engine that dynamically
 
 ## 🧮 5. Score Breakdown & Math Engine
 
-Every completed run calculates three distinct score components that sum **exactly** to your total score:
+Every completed run calculates discrete score components that sum **exactly** to your total score:
 
-$$\text{Total Score} = \text{Pure Typing Score} + \text{Multiplier Score} + \text{Speed Bonus Score}$$
+$$\text{Total Score} = (\text{Base Typing Score} - \text{Accuracy Penalty}) + \text{Multiplier Score} + \text{Speed Bonus Score}$$
 
-### 1. Advertised Reward Ranges & Pure Typing Score
-The **Advertised Reward** displayed on every packet represents its base **Pure Typing Score**, dynamically sampled from a calibrated range per difficulty and risk tier:
+### 1. Advertised Reward Ranges & Base Typing Score
+The **Advertised Reward** displayed on every packet represents its **Base Typing Score**, dynamically sampled from a calibrated range per difficulty and risk tier:
 
 | Difficulty | Word Length | Advertised Reward Range | Safe Tier (< 25%) | Caution Tier (25%–49%) | Danger Tier (≥ 50%) |
 | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -81,35 +81,61 @@ The **Advertised Reward** displayed on every packet represents its base **Pure T
 *High Roller packets multiply these advertised reward ranges by $3\times$.*
 
 **Interception Outcomes:**
-* **Non-Corrupted (Clean) Packets:** You receive **positive** pure score ($+\text{Advertised Reward}$), plus clean streak multipliers and speed bonuses.
+* **Non-Corrupted (Clean) Packets:** You receive **positive** base score ($+\text{Advertised Reward}$), plus clean streak multipliers and speed bonuses.
 * **Corrupted Packets:** You receive **negative** penalty ($-\text{Advertised Reward}$), your clean streak multiplier resets to zero, and danger words risk losing 1 shield.
 * **Fair Shield Rule:** 🟢 Safe and 🟡 Caution packets never cost a shield upon corruption. Only 🔴 Danger words or bottom-line breaches deduct shields.
 
-### 2. Clean Streak Multipliers
+---
+
+### 2. Accuracy Penalty: $(2 \times (100 - \text{Accuracy}))\%$
+To reward precision and punish frantic key-spamming, your **Base Typing Score** is subject to a strict accuracy deduction:
+
+$$\text{Accuracy Penalty } \% = \min(100, \max(0, 2 \times (100 - \text{Accuracy})))$$
+$$\text{Accuracy Penalty Score} = \text{Base Typing Score} \times \left(\frac{\text{Accuracy Penalty } \%}{100}\right)$$
+$$\text{Net Typing Score} = \text{Base Typing Score} - \text{Accuracy Penalty Score}$$
+
+| Player Accuracy % | Error Rate ($100 - \text{Acc}$) | Penalty Applied on Base Typing | Example on 1,000 Base Score | Net Typing Score |
+| :--- | :--- | :--- | :--- | :--- |
+| 🌟 **100% (Flawless)** | $0\%$ | **0% (None)** | $-0\text{ PTS}$ | **1,000 PTS** |
+| 🟢 **98%** | $2\%$ | **-4%** | $-40\text{ PTS}$ | **960 PTS** |
+| 🟡 **95%** | $5\%$ | **-10%** | $-100\text{ PTS}$ | **900 PTS** |
+| 🟠 **90%** | $10\%$ | **-20%** | $-200\text{ PTS}$ | **800 PTS** |
+| 🔴 **80%** | $20\%$ | **-40%** | $-400\text{ PTS}$ | **600 PTS** |
+
+> **Pro Takeaway:** Maintaining $98\%+$ accuracy is vastly more profitable than typing at 120 WPM with frequent typos, because mistakes penalize both your streak multiplier AND your base score!
+
+---
+
+### 3. Clean Streak Multipliers
 Typing clean words consecutively without errors unlocks massive point multipliers:
 * **Base (1x):** 0–2 streak
 * **2x Multiplier:** 3 in a row
 * **3x Multiplier:** 6 in a row
 * **4x MAX Multiplier:** 10+ in a row
-* Points earned above the pure typing base from the streak multiplier are recorded as **Multiplier Score**.
+* Points earned above the base from streak multipliers are recorded as **Multiplier Score**.
 
-### 3. Typing Speed Bonus (Applied on Pure Typing Score)
+---
+
+### 4. Typing Speed Bonus (Applied on Net Typing Score)
 The faster your fingers type each word, the higher your bonus percentage based on Words Per Minute (WPM):
 * **30+ WPM:** $+20\%$ Speed Bonus
 * **50+ WPM:** $+35\%$ Speed Bonus
 * **70+ WPM:** $+50\%$ Speed Bonus
 * **90+ WPM:** $+75\%$ Speed Bonus
 * **110+ WPM:** $+100\%$ Speed Bonus (Double Points!)
-* **Rule:** The speed bonus percentage is applied **strictly to your Pure Typing Score**:
-  $$\text{Speed Bonus Score} = \text{Pure Typing Score} \times \text{Speed Bonus } \%$$
+* **Formula:** $\text{Speed Bonus Score} = \text{Net Typing Score} \times \text{Speed Bonus } \%$
 
-### 4. Luck Metric
+---
+
+### 5. Luck Metric
 Measures how actual packet outcomes deviated from statistical expectation:
-$$\text{Luck} = \text{Pure Typing Score} - \text{Expected Pure Score}$$
+$$\text{Luck} = \text{Net Typing Score} - \text{Expected Value Pure Score}$$
 * **Positive Luck ($> 0$):** You intercepted riskier packets that turned out clean more often than statistically expected.
 * **Negative Luck ($< 0$):** Unfortunate packet corruption streaks lowered your pure yield below mathematical expectation.
 
-### 5. Universal 2-Decimal Precision
+---
+
+### 6. Universal 2-Decimal Precision
 All floating-point metrics (WPM, Accuracy %, Multipliers, Luck, and Averages) are consistently rounded to **2 decimal places** across the game canvas, dashboard analytics, and the database.
 
 ---
@@ -149,10 +175,6 @@ Calculates your automated behavioral persona from your historical and latest run
 * 🎲 **The High Roller:** Chases 🔴 Danger packets ($\ge 35\%$ Danger selection) for maximum score thrill.
 * 🧘 **The Zen Master:** Flawless accuracy ($\ge 99\%$) with zero unforced errors.
 
-### 3. Historical Improvement Curves & Filters
-* **Mode & Difficulty Filters:** Filter telemetry by Classic vs. Endless vs. Daily, and Easy vs. Medium vs. Hard.
-* **Telemetry Charts:** Effective WPM progression, keystroke accuracy over time, total score vs expected EV, and empirical calibration curves.
-
 ---
 
 ## 🌐 9. Live Online Runners Presence
@@ -168,3 +190,36 @@ Calculates your automated behavioral persona from your historical and latest run
 * **Username Format:** Usernames can contain both uppercase and lowercase letters (e.g. `Aditya_G`, `CyberNinja99`), digits, and underscores (3–20 characters).
 * **Uniqueness:** Usernames are unique case-insensitively (`CyberNinja` and `cyberninja` represent the same account).
 * **Persistent Authentication:** Uses dual-token JWT authentication (15-minute access token + 30-day refresh token stored in secure `httpOnly` cookies). You stay logged in automatically across page refreshes and browser restarts.
+
+---
+
+## 🏆 11. Pro Strategy Guide: How to Score Better
+
+Tested and verified by top leaderboard runners. Follow these 6 core tactics to maximize your score and climb the rankings:
+
+### 🎯 Tactic 1: Accuracy First, Speed Second
+* **The Double-Penalty Hazard:** Every typo resets your **4x streak multiplier** back to 1x AND triggers the **$(2 \times \text{mistype}\%)$ penalty** on your Base Typing score.
+* **The Math:** A runner typing 70 WPM at 99% accuracy will almost always beat a runner typing 100 WPM at 90% accuracy (who suffers a -20% score deduction and repeated multiplier resets).
+* **Rule:** Focus on clean, rhythmic keystrokes before chasing speed bonuses.
+
+### 🛡️ Tactic 2: Build Your 4x Multiplier on Safe & Caution Words
+* 🟢 Safe packets ($p < 0.25$) and 🟡 Caution packets ($p < 0.50$) **never deduct shields** even if corrupted.
+* Use these low-risk words early in your run to safely chain 10 clean words in a row to hit the permanent **4x MAX multiplier**. Once at 4x, every subsequent word yields quadrupled points!
+
+### ⏳ Tactic 3: Exploit Decryption Overclock (Matrix Slow-Mo)
+* At streaks of **15, 30, and 45**, the engine activates 5 seconds of half-speed packet descent.
+* Use this slow-motion window to clear the lowest words in congested lanes, restore breathing room, and lock onto high-value words without rushing.
+
+### 🛡️ Tactic 4: Clutch Shield Management with Nanite Packets
+* When your shields drop to 2 or 1, the system automatically begins spawning glowing cyan **Nanite Shield Recovery Packets**.
+* These packets move faster (+25% speed) but are guaranteed to be in the **Safe tier**. Prioritize them immediately to restore +1 Shield and avoid elimination.
+
+### 🌟 Tactic 5: Only Gamble on Golden High Rollers with 3+ Shields
+* Golden packets offer a massive **$3\times$ Advertised Reward**, but carry an exact 50% coin-flip risk.
+* **When to intercept:** If you have 4 or 5 shields and a 4x multiplier active, the upside ($3\times$ base $\times 4\times$ combo) is mathematically worth the risk.
+* **When to avoid:** If you are down to 1 or 2 shields, let the high roller pass or use EMP, as corruption risks run termination.
+
+### ⚡ Tactic 6: Save EMP Blasts for Firewall Redline Emergencies
+* You earn +1 EMP charge for every 10 consecutive clean words.
+* EMP obliterates the lowest impending packet with 0 shield penalty and grants $+50\%$ bonus points.
+* Never waste EMP on freshly spawned packets near the top of the lane; save your EMP charges for moments when a Danger word or breached word touches the bottom defense line.

@@ -10,6 +10,10 @@ interface GameOverModalProps {
   score: number;
   maxCombo: number;
   events: PacketEvent[];
+  accuracy?: number;
+  rawTypingScore?: number;
+  accuracyPenaltyPct?: number;
+  accuracyPenaltyScore?: number;
   onPlayAgain: () => void;
   onViewAnalytics: () => void;
 }
@@ -18,6 +22,10 @@ export function GameOverModal({
   score,
   maxCombo,
   events,
+  accuracy,
+  rawTypingScore,
+  accuracyPenaltyPct,
+  accuracyPenaltyScore,
   onPlayAgain,
   onViewAnalytics,
 }: GameOverModalProps) {
@@ -45,12 +53,20 @@ export function GameOverModal({
   speedBonusPts = round2(speedBonusPts);
   const roundedScore = round2(score);
 
-  // Guarantee exact invariant: pureTyping + multiplierPts + speedBonusPts === score
-  const diff = round2(roundedScore - (pureTyping + multiplierPts + speedBonusPts));
-  pureTyping = round2(pureTyping + diff);
+  // Accuracy Penalty: (2 * (100 - accuracy))% on true typing score
+  const accuracyVal = typeof accuracy === "number" ? accuracy : 100;
+  const errorRate = Math.max(0, 100 - accuracyVal);
+  const computedPenaltyPct = round2(accuracyPenaltyPct ?? Math.min(100, 2 * errorRate));
+  const baseTyping = round2(rawTypingScore ?? pureTyping);
+  const penaltyAmount = round2(accuracyPenaltyScore ?? Math.max(0, baseTyping * (computedPenaltyPct / 100)));
+  const netTyping = round2(baseTyping - penaltyAmount);
 
-  // Rule: luck is calculated using expected EV and pure typing score, NOT the total score
-  const luckScore = round2(pureTyping - totalEV);
+  // Guarantee exact invariant: finalNetTyping + multiplierPts + speedBonusPts === roundedScore
+  const diff = round2(roundedScore - (netTyping + multiplierPts + speedBonusPts));
+  const finalNetTyping = round2(netTyping + diff);
+
+  // Rule: luck is calculated using expected EV and net pure typing score, NOT the total score
+  const luckScore = round2(finalNetTyping - totalEV);
 
   const safeCount = intercepted.filter((e) => e.corruptionProbability < 0.25).length;
   const cautionCount = intercepted.filter(
@@ -90,19 +106,35 @@ export function GameOverModal({
         </div>
 
         {/* Detailed Score Decomposition Grid */}
-        <div className="grid grid-cols-3 gap-2 mb-2 text-xs">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-2 text-xs">
           <div className="p-2 rounded bg-secondary/50 border border-border/40">
-            <div className="text-[9px] text-muted-foreground uppercase">PURE TYPING</div>
-            <div className="font-bold text-foreground">{formatNumber(pureTyping)} PTS</div>
+            <div className="text-[9px] text-muted-foreground uppercase">BASE TYPING</div>
+            <div className="font-bold text-foreground">+{formatNumber(baseTyping)}</div>
+          </div>
+          <div className={`p-2 rounded border border-border/40 ${computedPenaltyPct > 0 ? "bg-rose-950/30 border-rose-500/40" : "bg-emerald-950/20 border-emerald-500/30"}`}>
+            <div className="text-[9px] text-muted-foreground uppercase">ACCURACY PENALTY</div>
+            <div className={`font-bold ${computedPenaltyPct > 0 ? "text-rose-400" : "text-emerald-400"}`}>
+              {computedPenaltyPct > 0 ? `-${computedPenaltyPct}% (-${formatNumber(penaltyAmount)})` : "0% (NONE)"}
+            </div>
           </div>
           <div className="p-2 rounded bg-secondary/50 border border-border/40">
             <div className="text-[9px] text-muted-foreground uppercase">MULTIPLIER</div>
-            <div className="font-bold text-amber-400">+{formatNumber(multiplierPts)} PTS</div>
+            <div className="font-bold text-amber-400">+{formatNumber(multiplierPts)}</div>
           </div>
           <div className="p-2 rounded bg-secondary/50 border border-border/40">
             <div className="text-[9px] text-muted-foreground uppercase">SPEED BONUS</div>
-            <div className="font-bold text-primary">+{formatNumber(speedBonusPts)} PTS</div>
+            <div className="font-bold text-primary">+{formatNumber(speedBonusPts)}</div>
           </div>
+        </div>
+
+        {/* Accuracy Penalty Banner */}
+        <div className={`p-2 rounded border text-[10px] mb-2 flex items-center justify-between ${computedPenaltyPct > 0 ? "bg-rose-950/40 border-rose-500/40 text-rose-300" : "bg-emerald-950/30 border-emerald-500/30 text-emerald-300"}`}>
+          <span>
+            {computedPenaltyPct > 0
+              ? `⚠️ ACCURACY PENALTY: (2 × (100 - ${accuracyVal}%)) = -${computedPenaltyPct}% on Base Typing.`
+              : `✨ FLAWLESS ACCURACY (100%): Zero deduction applied to Base Typing score.`}
+          </span>
+          <span className="font-bold">Net Typing: {formatNumber(finalNetTyping)} PTS</span>
         </div>
 
         {/* Expected & Pure Luck Variance */}
@@ -123,7 +155,7 @@ export function GameOverModal({
         <div className="p-2 rounded bg-secondary/30 border border-border/40 text-[10px] text-muted-foreground flex items-center justify-between">
           <span>SUM CHECK:</span>
           <span className="font-bold text-foreground">
-            {formatNumber(pureTyping)} + {formatNumber(multiplierPts)} + {formatNumber(speedBonusPts)} = {formatNumber(roundedScore)} PTS
+            {formatNumber(finalNetTyping)} + {formatNumber(multiplierPts)} + {formatNumber(speedBonusPts)} = {formatNumber(roundedScore)} PTS
           </span>
         </div>
 

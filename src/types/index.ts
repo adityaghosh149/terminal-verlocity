@@ -58,6 +58,9 @@ export interface GameRunResult {
   durationSeconds: number;
   finalScore: number;
   actualTypingScore?: number;
+  rawTypingScore?: number;
+  accuracyPenaltyPct?: number;
+  accuracyPenaltyScore?: number;
   multiplierScore?: number;
   speedBonusScore?: number;
   expectedScore?: number;

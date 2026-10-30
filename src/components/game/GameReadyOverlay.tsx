@@ -5,6 +5,7 @@ import { Zap, LogIn, Code, ShieldCheck, Terminal, Cpu } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useSessionStore } from "@/store/useSessionStore";
 import { WordPackType } from "@/types";
+import { HowToPlayModal } from "@/components/game/HowToPlayModal";
 
 interface GameReadyOverlayProps {
   mode: string;
@@ -108,13 +109,14 @@ export function GameReadyOverlay({
         <span className="text-primary font-bold">5 Shields</span>. Catch 🛡️ Nanite packets to restore shields!
       </p>
 
-      <div className="mt-5 flex items-center justify-center">
+      <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
         <button
           onClick={handleStart}
-          className="bg-primary text-primary-foreground font-display font-black px-8 py-3.5 rounded-lg text-sm hover:opacity-90 transition-all glow-primary tracking-widest"
+          className="bg-primary text-primary-foreground font-display font-black px-8 py-3.5 rounded-lg text-sm hover:opacity-90 transition-all glow-primary tracking-widest shadow-lg"
         >
           {activeName ? "START PLAYING [SPACE]" : "LOG IN / REGISTER & START"}
         </button>
+        <HowToPlayModal />
       </div>
     </div>
   );

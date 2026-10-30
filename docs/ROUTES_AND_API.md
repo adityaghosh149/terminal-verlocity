@@ -141,18 +141,21 @@ This document provides a comprehensive specification of all user-facing frontend
 ### 3.2 Submit Game Run
 * **Endpoint:** `POST /api/game/submit`
 * **Access Level:** **Public** *(Authorized via signed `runToken`)*
-* **Description:** Validates client score integrity against signed `runToken` bounds, typing speed limits (WPM $\le 240$), decomposes score into exact components (`pureTypingScore`, `multiplierScore`, `speedBonusScore`, `luckScore`), logs keystroke typos (`typoMap`), and captures selected word pack. Persists validated run to MongoDB.
+* **Description:** Validates client score integrity against signed `runToken` bounds, typing speed limits (WPM $\le 240$), enforces the **$(2 \times (100 - \text{accuracy}))\%$ Accuracy Penalty** on Base Typing Score, decomposes score into exact components (`actualTypingScore` [net], `rawTypingScore`, `accuracyPenaltyPct`, `accuracyPenaltyScore`, `multiplierScore`, `speedBonusScore`, `luckScore`), logs keystroke typos (`typoMap`), and captures selected word pack. Persists validated run to MongoDB.
 * **Request Body:**
   ```json
   {
     "runToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
     "finalScore": 1450.50,
     "actualTypingScore": 900.00,
+    "rawTypingScore": 1000.00,
+    "accuracyPenaltyPct": 10.00,
+    "accuracyPenaltyScore": 100.00,
     "multiplierScore": 350.50,
     "speedBonusScore": 200.00,
     "luckScore": 45.20,
     "wpm": 78.40,
-    "accuracy": 98.20,
+    "accuracy": 95.00,
     "maxCombo": 18,
     "events": [...],
     "endTime": 1730278460000,

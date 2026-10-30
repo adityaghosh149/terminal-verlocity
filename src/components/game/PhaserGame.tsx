@@ -26,7 +26,7 @@ import { GameBottomBar } from "./GameBottomBar";
 
 export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
   const router = useRouter();
-  const { soundEnabled, setSoundEnabled, screenShake, setLastRunResult } = useGameStore();
+  const { soundEnabled, setSoundEnabled, screenShake, setLastRunResult, lastRunResult } = useGameStore();
   const { username } = useSessionStore();
   const { user, openAuthModal } = useAuthStore();
   const effectiveUsername = user?.username || username;
@@ -441,18 +441,23 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
       }
 
       expectedTotal = round2(expectedTotal);
-      pureTypingTotal = round2(pureTypingTotal);
+      const rawTypingScore = round2(pureTypingTotal);
       multiplierTotal = round2(multiplierTotal);
       speedBonusTotal = round2(speedBonusTotal);
 
-      // Invariant: pureTypingTotal + multiplierTotal + speedBonusTotal === finalScoreVal
-      const componentsSum = round2(pureTypingTotal + multiplierTotal + speedBonusTotal);
-      if (componentsSum !== finalScoreVal) {
-        pureTypingTotal = round2(finalScoreVal - (multiplierTotal + speedBonusTotal));
-      }
+      // Accuracy Penalty: (2 * (100 - accuracy))% on true typing score
+      const errorRate = Math.max(0, 100 - accuracy);
+      const accuracyPenaltyPct = round2(Math.min(100, 2 * errorRate));
+      const accuracyPenaltyScore = round2(Math.max(0, rawTypingScore * (accuracyPenaltyPct / 100)));
+      const netPureTyping = round2(rawTypingScore - accuracyPenaltyScore);
 
-      // Luck score: strictly computed using expected EV and pure typing score, NOT total score
-      const luckScore = round2(pureTypingTotal - expectedTotal);
+      // Final score reflects net pure typing after accuracy penalty
+      const calculatedFinalScore = round2(Math.max(0, netPureTyping + multiplierTotal + speedBonusTotal));
+      setScore(calculatedFinalScore);
+      scoreRef.current = calculatedFinalScore;
+
+      // Luck score: strictly computed using expected EV and net pure typing score, NOT total score
+      const luckScore = round2(netPureTyping - expectedTotal);
 
       soundEngine.stopSynthwave();
 
@@ -464,8 +469,11 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
         startTime: run.startTime,
         endTime,
         durationSeconds,
-        finalScore: finalScoreVal,
-        actualTypingScore: pureTypingTotal,
+        finalScore: calculatedFinalScore,
+        actualTypingScore: netPureTyping,
+        rawTypingScore,
+        accuracyPenaltyPct,
+        accuracyPenaltyScore,
         multiplierScore: multiplierTotal,
         speedBonusScore: speedBonusTotal,
         expectedScore: expectedTotal,
@@ -479,7 +487,7 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
         missedCount: run.events.filter((e) => e.action === "missed").length,
         ignoredCount: run.events.filter((e) => e.action === "ignored").length,
         totalExpectedValue: expectedTotal,
-        totalRealizedScore: finalScoreVal,
+        totalRealizedScore: calculatedFinalScore,
         maxCombo: maxComboVal,
         events: run.events,
         status: "validated",
@@ -503,8 +511,11 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             runToken: run.runToken,
-            finalScore: finalScoreVal,
-            actualTypingScore: pureTypingTotal,
+            finalScore: calculatedFinalScore,
+            actualTypingScore: netPureTyping,
+            rawTypingScore,
+            accuracyPenaltyPct,
+            accuracyPenaltyScore,
             multiplierScore: multiplierTotal,
             speedBonusScore: speedBonusTotal,
             expectedScore: expectedTotal,
@@ -1228,6 +1239,10 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
             score={score}
             maxCombo={maxCombo}
             events={runDataRef.current.events}
+            accuracy={lastRunResult?.accuracy}
+            rawTypingScore={lastRunResult?.rawTypingScore}
+            accuracyPenaltyPct={lastRunResult?.accuracyPenaltyPct}
+            accuracyPenaltyScore={lastRunResult?.accuracyPenaltyScore}
             onPlayAgain={() => {
               initializeRun();
               setTimeout(() => {

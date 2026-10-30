@@ -42,11 +42,12 @@ Built with **Next.js 14 (App Router)**, **TypeScript**, **Tailwind CSS**, **Mong
   - 30-day **persistent refresh tokens** in `httpOnly`, `SameSite=Lax`, `Secure` cookies with silent background rotation.
   - Configurable expiration periods via environment variables (`JWT_ACCESS_EXPIRY`, `JWT_REFRESH_EXPIRY`).
 - **Exact Score Breakdown & Integrity:**
-  - **Pure Typing Score:** Base points earned purely from typing advertised rewards in calibrated ranges per difficulty.
+  - **Base Typing Score & Ranges:** Advertised rewards dynamically sampled in calibrated ranges per difficulty (Easy: 40–70, Medium: 75–130, Hard: 140–240 pts).
+  - **Accuracy Penalty:** Strict penalty of $(2 \times (100 - \text{Accuracy}))\%$ deducted from Base Typing Score to reward precise typing and prevent key-mashing.
   - **Multiplier Score:** Bonus points from consecutive streaks (up to $4.0\times$).
-  - **Speed Bonus Score:** Speed bonus percentage derived from WPM applied strictly to the Pure Typing Score.
-  - **Exact Sum Verification:** $\text{Total Score} = \text{Pure Typing Score} + \text{Multiplier Score} + \text{Speed Bonus Score}$.
-  - **Luck Index:** Calculated from pure score vs expected pure score ($\text{Luck} = \text{PureTypingScore} - \text{ExpectedPureScore}$).
+  - **Speed Bonus Score:** Speed bonus percentage derived from WPM applied strictly to the Net Typing Score.
+  - **Exact Sum Verification:** $\text{Total Score} = (\text{Base Typing Score} - \text{Accuracy Penalty}) + \text{Multiplier Score} + \text{Speed Bonus Score}$.
+  - **Luck Index:** Calculated from net typing score vs expected score ($\text{Luck} = \text{NetTypingScore} - \text{ExpectedPureScore}$).
   - **Universal 2-Decimal Precision:** WPM, Accuracy %, Multipliers, Luck, and score metrics consistently formatted to 2 decimal places.
 - **3 Game Modes & 3 Difficulty Profiles:**
   - *Classic:* 90-second sprint with escalating drop velocities.
