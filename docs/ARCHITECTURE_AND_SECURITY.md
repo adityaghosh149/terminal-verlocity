@@ -7,12 +7,15 @@ This document details the mathematical modeling, data science methodology, and s
 ## 1. Probability Engine & Scoring Architecture
 
 ### 1.1 Authoritative Mathematical Formulation
-Every falling data packet possesses four fundamental attributes:
-1. **Advertised Reward ($R$):** The base **Pure Typing Score** sampled from calibrated difficulty ranges (Easy: 40–70, Medium: 75–130, Hard: 140–240 pts) based on risk tier. Intercepting clean awards $+R$ points.
-2. **Corruption Probability ($p \in [0.10, 0.65]$):** The objective probability that the packet contains a corrupted payload.
+Every falling data packet possesses five fundamental attributes:
+1. **Advertised Reward ($R$):** The base **Pure Typing Score** sampled from calibrated difficulty ranges (Easy: 40–70, Medium: 75–130, Hard: 140–240 pts, and $3\times$ for High Roller packets) based on risk tier. Intercepting clean awards $+R$ points.
+2. **Corruption Probability ($p \in [0.05, 0.65]$):** The objective probability that the packet contains a corrupted payload.
 3. **Success Probability ($1 - p$):** The objective probability that the packet is clean.
-4. **Corruption Penalty ($C$):** Equal to the Advertised Reward ($C = R$). Intercepting while corrupted deducts $-C$ points (negative pure score) and resets streaks.
-5. **Interception Cost ($K$):** Upfront execution cost (defaults to 0).
+4. **Corruption Penalty ($C$):** Symmetric to Advertised Reward ($C = R$). Intercepting while corrupted deducts $-C$ points (negative pure score) and resets streaks.
+5. **Special Packet Traits:**
+   - 🛡️ **Nanite Shield Recovery:** Spawns when shields $\le 2$ (safe risk $p \in [0.05, 0.20]$, +25% speed). Clean interception restores +1 Shield.
+   - ⏳ **Decryption Overclock (Matrix Slow-Mo):** Unlocked at 15, 30, and 45 clean streaks; slows falling packet velocity by 50% for 5 seconds.
+   - 🌟 **Golden High Roller:** $3\times$ reward multiplier with a strict coin-flip risk ($p = 0.50$).
 
 The **Expected Value ($EV$)** represents the mathematical expectation of point return over repeated trials:
 
@@ -30,8 +33,7 @@ A player's final score is calculated from three mathematically discrete componen
 
 $$\text{Total Score} = \text{Pure Typing Score} + \text{Multiplier Score} + \text{Speed Bonus Score}$$
 
-1. **Pure Typing Score:** Base points earned solely from typing correct characters:
-   $$\text{Pure Typing Score} = 10 \times \text{Word Character Length}$$
+1. **Pure Typing Score:** Base points earned purely from typing advertised rewards ($+R$ for clean, $-R$ for corrupted).
 2. **Multiplier Score:** Bonus points accumulated from maintaining consecutive streaks (up to $4.0\times$).
 3. **Speed Bonus Score:** Typing speed bonus applied **strictly on the Pure Typing Score**:
    $$\text{Speed Bonus Score} = \text{Pure Typing Score} \times \text{Speed Bonus Percentage (from WPM)}$$
@@ -70,10 +72,12 @@ This guarantees that all players worldwide receiving the daily seed `challenge_Y
 
 ---
 
-### 1.6 Post-Game Empirical Calibration & Performance Curves
+### 1.6 Post-Game Empirical Calibration, Heatmaps & Personas
 1. **Calibration Curves:** Packet events are binned into probability intervals $[0, 0.2), [0.2, 0.4), [0.4, 0.6), [0.6, 0.8), [0.8, 1.0]$. For each bin $b$ with $N$ samples:
    $$\bar{p}_{\text{theoretical}} = \frac{1}{N}\sum_{i=1}^N p_i, \quad \hat{p}_{\text{observed}} = \frac{\sum_{i=1}^N \mathbb{I}(\text{corrupted})}{N}$$
-2. **Performance Improvement Curves:** Historical WPM and Accuracy progression curves are segregated by **Game Mode** (Classic, Endless, Daily) and **Difficulty** (Easy, Medium, Hard), enabling meaningful longitudinal skill analysis.
+2. **Interactive QWERTY Typo Heatmap:** Client captures per-key mistypes and aggregates them to visualize keystroke error distribution.
+3. **Behavioral Player Archetypes:** Evaluates accuracy, WPM, and Danger selection ratio to classify players into Calculated Strategist, Speed Demon, High Roller, or Zen Master personas.
+4. **Performance Improvement Curves:** Historical WPM and Accuracy progression curves are segregated by **Game Mode** (Classic, Endless, Daily) and **Difficulty** (Easy, Medium, Hard), enabling meaningful longitudinal skill analysis.
 
 ---
 
@@ -113,9 +117,7 @@ Terminal Velocity implements authentication from scratch without external manage
   5. Telemetry event sum consistency: claimed final score must tally with packet points deltas.
 - Only validated runs qualify for global and difficulty leaderboards.
 
----
-
-## 3. Known Limitations & Recommendations
-
-1. **Client-Side Arcade Environment:** Because Phaser 3 executes in the browser canvas, client-side memory modifications are theoretically possible on compromised devices. While server-side bound checks prevent impossible scores, high-stakes commercial gaming would benefit from server-side physics simulation.
-2. **Key Rotation:** In large enterprise deployments, asymmetric signing keys (e.g. Ed25519 or RS256 with JWKS rotation) are recommended over shared symmetric secrets.
+### 2.5 Real-Time Network Presence & Session Heartbeats
+- Periodic 25-second pings track active runner sessions.
+- In MongoDB, documents in the `presences` collection use a TTL index (`expires: 90`), ensuring automatic cleanup of stale sessions.
+- In-memory store provides seamless fallback with 60-second sliding eviction.

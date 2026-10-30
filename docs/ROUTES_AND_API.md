@@ -8,9 +8,9 @@ This document provides a comprehensive specification of all user-facing frontend
 
 | Route | Access Level | Description | Key Features |
 | :--- | :--- | :--- | :--- |
-| `/` | **Public** | Home / Landing Page | Introduction to game rules, live CRT terminal hero preview, feature highlights, and instant "PLAY NOW" CTA. |
-| `/game` | **Public** *(Guest Playable)* | Main Arcade Playfield | 4-lane descending packet interception canvas, dynamic HUD, tactical EMP blast, full-screen mode, and end-of-run game over modal. |
-| `/dashboard` | **Public** *(Session-enhanced)* | Data Science Analytics | Longitudinal WPM and accuracy progression curves, Expected Value vs. Realized Score charts, empirical risk calibration curves, and performance improvement curves. |
+| `/` | **Public** | Home / Landing Page | Introduction to game rules, live CRT terminal hero preview, feature highlights, live online runners badge, and instant "PLAY NOW" CTA. |
+| `/game` | **Public** *(Guest Playable)* | Main Arcade Playfield | 4-lane descending packet interception canvas, dynamic HUD, tactical EMP blast, full-screen mode, slow-mo overclock banner, themed word pack selector, and game over modal. |
+| `/dashboard` | **Public** *(Session-enhanced)* | Data Science Analytics | Longitudinal WPM and accuracy progression curves, Expected Value vs. Realized Score charts, empirical risk calibration curves, interactive QWERTY Typo Heatmap, and Player Risk Archetypes. |
 | `/leaderboard` | **Public** | Global Leaderboards | Filterable ranking tables across Modes (Classic, Endless, Daily) and Difficulties (Easy, Medium, Hard) with real-time score, WPM, and accuracy telemetry. |
 | `/settings` | **Public** *(Session-synced)* | Preferences & Configuration | Cyberpunk theme selector (Midnight, Cyberpunk, Terminal Green, Amber Protocol, Light Mode), sound FX toggles, CRT scanline toggles, and account management. |
 
@@ -141,20 +141,24 @@ This document provides a comprehensive specification of all user-facing frontend
 ### 3.2 Submit Game Run
 * **Endpoint:** `POST /api/game/submit`
 * **Access Level:** **Public** *(Authorized via signed `runToken`)*
-* **Description:** Validates client score integrity against signed `runToken` bounds, typing speed limits (WPM $\le 240$), and decomposes score into exact components (`pureTypingScore`, `multiplierScore`, `speedBonusScore`, `luck`). Persists validated run to MongoDB.
+* **Description:** Validates client score integrity against signed `runToken` bounds, typing speed limits (WPM $\le 240$), decomposes score into exact components (`pureTypingScore`, `multiplierScore`, `speedBonusScore`, `luckScore`), logs keystroke typos (`typoMap`), and captures selected word pack. Persists validated run to MongoDB.
 * **Request Body:**
   ```json
   {
     "runToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
     "finalScore": 1450.50,
-    "pureTypingScore": 900.00,
+    "actualTypingScore": 900.00,
     "multiplierScore": 350.50,
     "speedBonusScore": 200.00,
-    "luck": 45.20,
+    "luckScore": 45.20,
     "wpm": 78.40,
     "accuracy": 98.20,
     "maxCombo": 18,
-    "events": [...]
+    "events": [...],
+    "endTime": 1730278460000,
+    "username": "NeoCipher",
+    "typoMap": { "E": 2, "R": 1, "T": 4 },
+    "wordPack": "developer"
   }
   ```
 * **Response (200 OK):**
@@ -186,7 +190,7 @@ This document provides a comprehensive specification of all user-facing frontend
 ### 4.2 Player Personal Statistics & History
 * **Endpoint:** `GET /api/player/stats`
 * **Access Level:** **Protected** *(Requires active user session)*
-* **Description:** Retrieves all historical game runs, personal bests, empirical calibration binning, and longitudinal WPM/accuracy curves for the authenticated user.
+* **Description:** Retrieves all historical game runs, personal bests, empirical calibration binning, longitudinal WPM/accuracy curves, aggregated `typoMap`, and calculated `dangerRatio` (for archetype classification).
 
 ---
 
@@ -226,3 +230,41 @@ This document provides a comprehensive specification of all user-facing frontend
 * **Endpoint:** `GET /api/player/achievements`
 * **Access Level:** **Protected** *(Requires active user session)*
 * **Description:** Returns earned achievements, unlock timestamps, and progress toward upcoming speed and survival milestones.
+
+---
+
+## 6. Presence & Real-Time Network Telemetry API Routes
+
+### 6.1 Get Active Online Runners Count
+* **Endpoint:** `GET /api/presence`
+* **Access Level:** **Public**
+* **Description:** Returns the total count of active runners connected across the network within the last 60 seconds.
+* **Response (200 OK):**
+  ```json
+  {
+    "onlineCount": 14,
+    "timestamp": 1730278400000
+  }
+  ```
+
+---
+
+### 6.2 Heartbeat Broadcast
+* **Endpoint:** `POST /api/presence`
+* **Access Level:** **Public** *(Session or Authenticated)*
+* **Description:** Broadcasts a client heartbeat every 25 seconds to maintain active presence in the network registry. Automatically evicts stale sessions older than 60 seconds (with MongoDB TTL 90-second index).
+* **Request Body:**
+  ```json
+  {
+    "sessionId": "tv_sess_abc123_xyz",
+    "username": "NeoCipher",
+    "path": "/game"
+  }
+  ```
+* **Response (200 OK):**
+  ```json
+  {
+    "onlineCount": 14,
+    "sessionId": "tv_sess_abc123_xyz"
+  }
+  ```

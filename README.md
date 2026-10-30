@@ -1,21 +1,40 @@
 # TERMINAL VELOCITY
 ### Type Fast. Think Faster.
-*A Full-Stack Probability-Based Arcade Typing Game with Custom Authentication & Data Science Telemetry*
+*A Full-Stack Probability-Based Arcade Typing Game with Custom Authentication, Tactical Power-ups, Real-Time Presence & Data Science Telemetry*
 
 ---
 
 ## 🚀 Overview
 
-**Terminal Velocity** is a modern full-stack web arcade game and data science application where mechanical typing speed and probabilistic risk management jointly determine player survival. Players intercept encrypted data packets descending through a cybernetic terminal grid. Intercepting clean packets yields rewards, while corrupted packets incur penalties and shield damage. 
+**Terminal Velocity** is a modern full-stack web arcade game and data science application where mechanical typing speed, probabilistic risk management, and tactical reflexes jointly determine player survival. Players intercept encrypted data packets descending through a cybernetic 4-lane terminal grid. Intercepting clean packets yields rewards, while corrupted packets incur penalties and shield damage. 
 
-Built with **Next.js 14 (App Router)**, **TypeScript**, **Tailwind CSS**, **Phaser 3**, **MongoDB Atlas**, **Mongoose**, **Jose (JWT)**, and **Argon2id**.
+Built with **Next.js 14 (App Router)**, **TypeScript**, **Tailwind CSS**, **MongoDB Atlas**, **Mongoose**, **Jose (JWT)**, and **Argon2id**.
 
 ---
 
 ## ⚡ Core Features
 
-- **Cyberpunk Arcade Canvas:** Fast, responsive falling packet interception built on Phaser 3 with procedural particle trails, CRT scanlines, and adaptive container-height physics.
-- **Independent Probability Engine:** Authoritative Expected Value calculations ($EV = (1-p)R - pC - K$), seeded deterministic PRNG (Mulberry32), and empirical calibration binning.
+- **Cyberpunk Arcade Canvas:** Fast, responsive falling packet interception with procedural particle trails, CRT scanlines, and adaptive container-height physics.
+- **Special Tactical Power-ups:**
+  - 🛡️ **Nanite Shield Recovery Packet:** Spawns when shields drop to $\le 2$; clean interception restores +1 Shield (up to 5 max).
+  - ⏳ **Decryption Overclock (Matrix Slow-Mo):** Unlocked at 15, 30, and 45 streaks; slows descending packets by 50% for 5 seconds.
+  - 🌟 **Golden "High Roller" Packets:** Ultra-rare packet offering $3\times$ reward with a 50/50 coin-flip risk ($p = 0.50$).
+- **Custom Themed Word Packs:** Selectable on the pre-game overlay:
+  - 🖥️ **Core Cyber:** Cyberpunk terminal terminology (`byte`, `data`, `matrix`, `cipher`).
+  - 💻 **Developer Syntax:** Keywords and constructs (`const`, `async`, `await`, `struct`).
+  - 🛡️ **Cybersecurity:** Threat and defense words (`hash`, `trojan`, `payload`, `breach`).
+  - 🐧 **Linux Sysadmin:** Unix tools and daemons (`grep`, `sudo`, `docker`, `kernel`).
+- **Dynamic Layered Synthwave Audio:** Procedural Web Audio API engine that dynamically builds musical layers as your clean streak increases:
+  - $1\times$: Sub-bass synthline
+  - $2\times$: Hi-hat percussion
+  - $3\times$: Fast arpeggiated synths
+  - $4\times$ Overdrive: Full cyberpunk synthwave lead
+- **Real-Time Online Runners Presence:** Live network telemetry badge showing the exact number of active players currently connected, powered by automated background heartbeats.
+- **Data Science Telemetry & Personas (`/dashboard`):**
+  - **Interactive QWERTY Typo Heatmap:** Heat-colored virtual keyboard displaying per-key mistype statistics.
+  - **Player Risk Archetype Personas:** Automated behavioral classifier (Calculated Strategist, Speed Demon, High Roller, Zen Master).
+  - **Longitudinal Improvement Curves:** Filterable by individual **Mode and Difficulty** combinations.
+  - **Calibration Curves:** Comparing observed packet corruption rates against theoretical mathematical probability.
 - **Custom Authentication Built from Scratch:** Zero external managed auth providers (no Clerk, Supabase, or Auth.js):
   - High-security **Argon2id** password hashing.
   - Case-preserving usernames (supports upper & lowercase, unique case-insensitively).
@@ -23,7 +42,7 @@ Built with **Next.js 14 (App Router)**, **TypeScript**, **Tailwind CSS**, **Phas
   - 30-day **persistent refresh tokens** in `httpOnly`, `SameSite=Lax`, `Secure` cookies with silent background rotation.
   - Configurable expiration periods via environment variables (`JWT_ACCESS_EXPIRY`, `JWT_REFRESH_EXPIRY`).
 - **Exact Score Breakdown & Integrity:**
-  - **Pure Typing Score:** Base points earned purely from typing ($10 \times \text{word length}$).
+  - **Pure Typing Score:** Base points earned purely from typing advertised rewards in calibrated ranges per difficulty.
   - **Multiplier Score:** Bonus points from consecutive streaks (up to $4.0\times$).
   - **Speed Bonus Score:** Speed bonus percentage derived from WPM applied strictly to the Pure Typing Score.
   - **Exact Sum Verification:** $\text{Total Score} = \text{Pure Typing Score} + \text{Multiplier Score} + \text{Speed Bonus Score}$.
@@ -31,15 +50,10 @@ Built with **Next.js 14 (App Router)**, **TypeScript**, **Tailwind CSS**, **Phas
   - **Universal 2-Decimal Precision:** WPM, Accuracy %, Multipliers, Luck, and score metrics consistently formatted to 2 decimal places.
 - **3 Game Modes & 3 Difficulty Profiles:**
   - *Classic:* 90-second sprint with escalating drop velocities.
-  - *Endless:* Survival mode against infinite streams until 3 firewall shields are lost.
+  - *Endless:* Survival mode against infinite streams until 5 firewall shields are lost.
   - *Daily Challenge:* Worldwide deterministic seeded run (`challenge_YYYY-MM-DD`).
-  - *Difficulties:* Easy, Medium, and Hard profiles adjusting drop velocity, vocabulary complexity, and corruption risk.
-- **Data Science Telemetry & Performance Improvement Curves:**
-  - Post-game telemetry saved to MongoDB with full event breakdown.
-  - Performance improvement curves filterable by individual **Mode and Difficulty** combinations to track true progress over time.
-  - Calibration curves comparing observed corruption rates against mathematical risk.
+  - *Difficulties:* Easy (4-letter words), Medium (5-letter words), and Hard (6-letter words).
 - **5 Theme Chromatics:** Midnight (default), Cyberpunk, Terminal Green, Amber Protocol, and Light Mode.
-- **Zero-Dependency Synthesizer:** Real-time procedural Web Audio API sound engine for mechanical keystrokes, success chimes, glitch alarms, and combo fanfares.
 
 ---
 
@@ -48,7 +62,7 @@ Built with **Next.js 14 (App Router)**, **TypeScript**, **Tailwind CSS**, **Phas
 | Layer | Technologies |
 | :--- | :--- |
 | **Frontend** | Next.js 14 App Router, React 18, TypeScript (strict), Tailwind CSS, Lucide React, Framer Motion |
-| **Arcade Canvas** | Phaser 3, Web Audio API procedural synthesizer |
+| **Arcade Canvas & Audio** | Custom HTML5 Canvas / React DOM animation loop, Web Audio API procedural synthesizer |
 | **State Management** | Zustand (persistent settings, theme synchronization, live HUD telemetry) |
 | **Data Analytics** | Recharts, Custom Probability Engine |
 | **Backend & APIs** | Next.js Route Handlers (`force-dynamic`), Server-only security modules |
@@ -70,7 +84,7 @@ Built with **Next.js 14 (App Router)**, **TypeScript**, **Tailwind CSS**, **Phas
 ```bash
 # Clone the repository
 git clone https://github.com/adityaghosh149/terminal-verlocity.git
-cd terminal-velocity
+cd terminal-verlocity
 
 # Install dependencies
 npm install
@@ -110,7 +124,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## 🧪 Testing Suite
 
-Run the automated Vitest test suite covering probability mathematics, Argon2id hashing, JWT access & refresh tokens, and telemetry score tallying:
+Run the automated Vitest test suite covering probability mathematics, Argon2id hashing, JWT access & refresh tokens, presence tracking, and telemetry score tallying:
 
 ```bash
 # Run tests
@@ -129,8 +143,10 @@ To verify the production build:
 npm run build
 ```
 
-For full documentation and cloud deployment guides:
+### Complete Technical Documentation:
 - [Official Gameplay & Rules Guide](docs/GAMEPLAY_AND_RULES.md)
+- [Complete Routes & API Specification](docs/ROUTES_AND_API.md)
+- [Project Directory & File Structure Guide](docs/PROJECT_STRUCTURE_AND_FILES.md)
 - [MongoDB Atlas Setup Guide](docs/MONGODB_ATLAS_SETUP.md)
 - [Vercel Deployment Guide](docs/VERCEL_DEPLOYMENT.md)
 - [Mathematical Architecture & Security Specification](docs/ARCHITECTURE_AND_SECURITY.md)
@@ -144,7 +160,7 @@ For full documentation and cloud deployment guides:
 - Refresh tokens hashed with **SHA-256** before database persistence.
 - Automatic **token reuse detection**: attempting to use a rotated token revokes the entire session family.
 - Competitive score integrity: client scores must match signed server `runToken` bounds and packet event sums to enter leaderboards.
-- Rate limiting on authentication routes prevents brute-force credential stuffing.
+- Rate limiting and session presence eviction prevent denial of service and memory leaks.
 
 ---
 
