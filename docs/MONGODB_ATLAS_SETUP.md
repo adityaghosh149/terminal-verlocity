@@ -2,9 +2,8 @@
 
 Terminal Velocity uses **MongoDB Atlas** as its authoritative, distributed database for:
 - User accounts and hashed credentials (Argon2id)
-- Cryptographic session family tracking & refresh token rotation
-- Email OTP and password recovery verification challenges
-- Validated game run records and post-game telemetry
+- Cryptographic refresh token session management
+- Validated game run records, telemetries, and exact score breakdowns
 - Global and mode/difficulty-filtered leaderboards
 - User theme, audio, and HUD preferences
 - Player progression (XP, levels, and achievements)
@@ -17,7 +16,7 @@ Terminal Velocity uses **MongoDB Atlas** as its authoritative, distributed datab
 1. Sign in to [MongoDB Atlas](https://www.mongodb.com/cloud/atlas).
 2. Click **Create** to deploy a new database cluster.
 3. Select **M0 (Free)** under shared clusters.
-4. Choose a cloud provider (AWS, Google Cloud, or Azure) and a region closest to your target audience (e.g. US East / N. Virginia for Vercel).
+4. Choose a cloud provider (AWS, Google Cloud, or Azure) and a region closest to your target audience.
 5. Name your cluster (e.g. `terminal-velocity-cluster`) and click **Create Deployment**.
 
 ---
@@ -28,14 +27,14 @@ Terminal Velocity uses **MongoDB Atlas** as its authoritative, distributed datab
 2. Click **Add New Database User**.
 3. Authentication Method: **Password**.
 4. Set a strong username (e.g. `tv_app_user`) and generate a secure password.
-5. Set Database User Privileges: **Read and write to any database** (or restrict to `terminal_velocity` database).
+5. Set Database User Privileges: **Read and write to any database** (or restrict to `terminal_velocity` and `terminal_velocity_dev`).
 6. Click **Add User**. Store these credentials securely.
 
 ---
 
 ## 3. Configure Network Access (IP Access List)
 
-Because Vercel serverless functions run across dynamic IP ranges, you must allow Atlas network access from Vercel:
+Because Vercel serverless functions run across dynamic cloud IP ranges, you must allow Atlas network access from Vercel:
 
 1. In the left sidebar, navigate to **Security** → **Network Access**.
 2. Click **Add IP Address**.
@@ -56,32 +55,39 @@ Because Vercel serverless functions run across dynamic IP ranges, you must allow
    mongodb+srv://<username>:<password>@cluster0.abcde.mongodb.net/?retryWrites=true&w=majority
    ```
 6. Replace `<username>` and `<password>` with your database user credentials.
-7. Append the database name `/terminal_velocity` before the query parameters:
-   ```
-   mongodb+srv://tv_app_user:YourSecretPass123@cluster0.abcde.mongodb.net/terminal_velocity?retryWrites=true&w=majority
-   ```
+7. Append the target database name:
+   * **Production:** `/terminal_velocity`
+     ```
+     mongodb+srv://user:pass@cluster0.abcde.mongodb.net/terminal_velocity?retryWrites=true&w=majority
+     ```
+   * **Local Development:** `/terminal_velocity_dev` (isolates local testing data)
+     ```
+     mongodb+srv://user:pass@cluster0.abcde.mongodb.net/terminal_velocity_dev?retryWrites=true&w=majority
+     ```
 
 ---
 
-## 5. Automated Database Indexes & Collections
+## 5. Automated Database Collections & Indexes
 
-The application automatically creates the necessary collections, unique constraints, and compound indexes upon connection via Mongoose:
+The application automatically creates collections, schemas, and compound indexes upon connection via Mongoose:
 
-| Collection | Key Indexes | Purpose |
+| Collection | Key Fields & Indexes | Purpose |
 | :--- | :--- | :--- |
-| `users` | `{ email: 1 }` (unique), `{ username: 1 }` (unique) | Enforce unique accounts and fast lookups |
+| `users` | `{ username: 1 }` (unique, case-insensitive), `passwordHash` | Player accounts, Argon2id passwords, and embedded settings |
+| `gameruns` | `{ status: 1, finalScore: -1 }`, `{ status: 1, mode: 1, difficulty: 1, finalScore: -1 }` | Validated runs, pure typing score, multiplier score, speed bonus score, luck, and leaderboards |
 | `sessions` | `{ sessionTokenHash: 1 }`, `{ familyId: 1 }`, `{ expiresAt: 1 }` (TTL) | Rotating refresh tokens and auto-expiration |
-| `verificationchallenges` | `{ target: 1, purpose: 1 }`, `{ expiresAt: 1 }` (TTL) | Single-use OTPs with auto-cleanup |
-| `gameruns` | `{ status: 1, finalScore: -1 }`, `{ status: 1, mode: 1, difficulty: 1, finalScore: -1 }` | Ultra-fast global and filtered leaderboard sorting |
 | `ratelimits` | `{ key: 1 }` (unique), `{ expiresAt: 1 }` (TTL) | Serverless sliding-window rate limiting |
-| `usersettings` | `{ userId: 1 }` (unique) | Theme, audio, and HUD persistence |
-| `achievements` | `{ userId: 1, achievementId: 1 }` (unique) | Prevent duplicate unlocks |
+| `achievements` | `{ userId: 1, achievementId: 1 }` (unique) | Prevents duplicate player achievement unlocks |
 
 ---
 
 ## 6. Configure Environment Variables
 
-In your `.env.local` (local development) and in Vercel Project Settings:
-```env
-MONGODB_URI="mongodb+srv://tv_app_user:YourSecretPass123@cluster0.abcde.mongodb.net/terminal_velocity?retryWrites=true&w=majority"
-```
+* **In `.env.local` (Local testing):**
+  ```env
+  MONGODB_URI="mongodb+srv://<username>:<password>@cluster0.abcde.mongodb.net/terminal_velocity_dev?retryWrites=true&w=majority"
+  ```
+* **In Vercel Project Settings (Production):**
+  ```env
+  MONGODB_URI="mongodb+srv://<username>:<password>@cluster0.abcde.mongodb.net/terminal_velocity?retryWrites=true&w=majority"
+  ```

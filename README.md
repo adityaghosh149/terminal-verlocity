@@ -6,7 +6,7 @@
 
 ## 🚀 Overview
 
-**Terminal Velocity** is a modern full-stack web arcade game and data science application where typing speed and mathematical risk management jointly determine player survival. Players intercept encrypted data packets descending through a cybernetic terminal grid. Intercepting clean packets yields rewards, but corrupted packets incur severe penalties and shield damage. 
+**Terminal Velocity** is a modern full-stack web arcade game and data science application where mechanical typing speed and probabilistic risk management jointly determine player survival. Players intercept encrypted data packets descending through a cybernetic terminal grid. Intercepting clean packets yields rewards, while corrupted packets incur penalties and shield damage. 
 
 Built with **Next.js 14 (App Router)**, **TypeScript**, **Tailwind CSS**, **Phaser 3**, **MongoDB Atlas**, **Mongoose**, **Jose (JWT)**, and **Argon2id**.
 
@@ -14,29 +14,32 @@ Built with **Next.js 14 (App Router)**, **TypeScript**, **Tailwind CSS**, **Phas
 
 ## ⚡ Core Features
 
-- **Cyberpunk Arcade Canvas:** Fast, responsive falling packet interception built on Phaser 3 with procedural particle trails and CRT scanlines.
+- **Cyberpunk Arcade Canvas:** Fast, responsive falling packet interception built on Phaser 3 with procedural particle trails, CRT scanlines, and adaptive container-height physics.
 - **Independent Probability Engine:** Authoritative Expected Value calculations ($EV = (1-p)R - pC - K$), seeded deterministic PRNG (Mulberry32), and empirical calibration binning.
-- **Custom Authentication Built from Scratch:** Zero managed auth providers (no Clerk, Supabase, or Auth.js). Complete implementation of:
-  - Argon2id password hashing
-  - 15-minute JWT access tokens (`jose`)
-  - 30-day rotating refresh tokens with token family reuse detection and breach containment
-  - Cryptographic 6-digit OTP email verification challenges
-  - Purpose-bound password recovery tokens & OTPs
-  - Session revocation and active session management
-  - Serverless-compatible distributed sliding-window rate limiting
-- **3 Game Modes & Difficulties:**
+- **Custom Authentication Built from Scratch:** Zero external managed auth providers (no Clerk, Supabase, or Auth.js):
+  - High-security **Argon2id** password hashing.
+  - Case-preserving usernames (supports upper & lowercase, unique case-insensitively).
+  - Short-lived 15-minute **JWT access tokens** (`jose`).
+  - 30-day **persistent refresh tokens** in `httpOnly`, `SameSite=Lax`, `Secure` cookies with silent background rotation.
+  - Configurable expiration periods via environment variables (`JWT_ACCESS_EXPIRY`, `JWT_REFRESH_EXPIRY`).
+- **Exact Score Breakdown & Integrity:**
+  - **Pure Typing Score:** Base points earned purely from typing ($10 \times \text{word length}$).
+  - **Multiplier Score:** Bonus points from consecutive streaks (up to $4.0\times$).
+  - **Speed Bonus Score:** Speed bonus percentage derived from WPM applied strictly to the Pure Typing Score.
+  - **Exact Sum Verification:** $\text{Total Score} = \text{Pure Typing Score} + \text{Multiplier Score} + \text{Speed Bonus Score}$.
+  - **Luck Index:** Calculated from pure score vs expected pure score ($\text{Luck} = \text{PureTypingScore} - \text{ExpectedPureScore}$).
+  - **Universal 2-Decimal Precision:** WPM, Accuracy %, Multipliers, Luck, and score metrics consistently formatted to 2 decimal places.
+- **3 Game Modes & 3 Difficulty Profiles:**
   - *Classic:* 90-second sprint with escalating drop velocities.
   - *Endless:* Survival mode against infinite streams until 3 firewall shields are lost.
   - *Daily Challenge:* Worldwide deterministic seeded run (`challenge_YYYY-MM-DD`).
-  - *Difficulties:* Easy, Medium, and Hard profiles adjusting speed, string length, and risk.
-- **Data Science Post-Game Telemetry:**
-  - Realized score vs Theoretical Expected Value comparison per packet.
-  - Empirical corruption frequency vs theoretical risk (Calibration Curve).
-  - Score progression trajectory over time.
-  - Rational Decision Index ($RDI$) and sample variance analysis.
-- **Score Integrity Engine:** Server-authorized run tokens (`runToken`), duration bounds, typing speed feasibility caps ($< 240$ WPM), and telemetry event tally validation.
+  - *Difficulties:* Easy, Medium, and Hard profiles adjusting drop velocity, vocabulary complexity, and corruption risk.
+- **Data Science Telemetry & Performance Improvement Curves:**
+  - Post-game telemetry saved to MongoDB with full event breakdown.
+  - Performance improvement curves filterable by individual **Mode and Difficulty** combinations to track true progress over time.
+  - Calibration curves comparing observed corruption rates against mathematical risk.
 - **5 Theme Chromatics:** Midnight (default), Cyberpunk, Terminal Green, Amber Protocol, and Light Mode.
-- **Zero-Dependency Synthesizer:** Real-time Web Audio API sound engine for mechanical keystrokes, success chimes, glitch alarms, and combo fanfares.
+- **Zero-Dependency Synthesizer:** Real-time procedural Web Audio API sound engine for mechanical keystrokes, success chimes, glitch alarms, and combo fanfares.
 
 ---
 
@@ -51,7 +54,6 @@ Built with **Next.js 14 (App Router)**, **TypeScript**, **Tailwind CSS**, **Phas
 | **Backend & APIs** | Next.js Route Handlers (`force-dynamic`), Server-only security modules |
 | **Database** | MongoDB Atlas, Mongoose (schemas, compound indexes, TTL auto-cleanup) |
 | **Authentication** | Argon2id (`@node-rs/argon2`), `jose` (JWT), Node `crypto` |
-| **Email Infrastructure** | Resend API with local development console fallback |
 | **Testing** | Vitest (unit & integration tests) |
 | **Deployment** | Vercel (serverless deployment ready) |
 
@@ -62,11 +64,12 @@ Built with **Next.js 14 (App Router)**, **TypeScript**, **Tailwind CSS**, **Phas
 ### 1. Prerequisites
 - Node.js (v18.17+ or v20+)
 - npm or pnpm
+- MongoDB Atlas cluster (or local MongoDB instance)
 
 ### 2. Installation
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/terminal-velocity.git
+git clone https://github.com/adityaghosh149/terminal-verlocity.git
 cd terminal-velocity
 
 # Install dependencies
@@ -79,22 +82,22 @@ Copy `.env.example` to `.env.local`:
 cp .env.example .env.local
 ```
 
-Configure your environment variables:
+Populate `.env.local` with your configuration:
 ```env
 # MongoDB Atlas Connection URI
-MONGODB_URI="mongodb+srv://username:password@cluster0.mongodb.net/terminal_velocity?retryWrites=true&w=majority"
+MONGODB_URI="mongodb+srv://<username>:<password>@cluster0.mongodb.net/terminal_velocity_dev?retryWrites=true&w=majority"
 
-# 32+ character JWT Signing Secret
-JWT_ACCESS_SECRET="terminal_velocity_super_secret_jwt_access_signing_key_min_32_chars"
+# 32+ character high-entropy JWT secrets
+JWT_ACCESS_SECRET="your_local_jwt_access_secret_min_32_chars"
+JWT_REFRESH_SECRET="your_local_jwt_refresh_secret_min_32_chars"
+
+# Token Expirations
+JWT_ACCESS_EXPIRY="15m"
+JWT_REFRESH_EXPIRY="30d"
+
+# Issuer & Audience
 JWT_ISSUER="terminal-velocity.app"
 JWT_AUDIENCE="terminal-velocity-players"
-
-# Application URL
-APP_URL="http://localhost:3000"
-
-# Transactional Email (Optional for local testing; logs to console when unset)
-RESEND_API_KEY=""
-EMAIL_FROM="Terminal Velocity <onboarding@resend.dev>"
 ```
 
 ### 4. Run Development Server
@@ -107,7 +110,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## 🧪 Testing Suite
 
-Run the automated Vitest test suite covering probability mathematics, Argon2id hashing, JWT access tokens, token rotation, and end-to-end telemetry tallying:
+Run the automated Vitest test suite covering probability mathematics, Argon2id hashing, JWT access & refresh tokens, and telemetry score tallying:
 
 ```bash
 # Run tests
@@ -126,23 +129,22 @@ To verify the production build:
 npm run build
 ```
 
-For complete cloud deployment instructions:
+For full documentation and cloud deployment guides:
+- [Official Gameplay & Rules Guide](docs/GAMEPLAY_AND_RULES.md)
 - [MongoDB Atlas Setup Guide](docs/MONGODB_ATLAS_SETUP.md)
 - [Vercel Deployment Guide](docs/VERCEL_DEPLOYMENT.md)
-- [Email Infrastructure Guide](docs/EMAIL_SETUP.md)
-- [Architecture & Security Specification](docs/ARCHITECTURE_AND_SECURITY.md)
+- [Mathematical Architecture & Security Specification](docs/ARCHITECTURE_AND_SECURITY.md)
 
 ---
 
 ## 🔐 Security Considerations
 
 - Passwords hashed with **Argon2id** (memory cost: 19 MiB, time cost: 2 passes).
-- Bearer credentials stored strictly in **HttpOnly, SameSite=Lax, Secure** cookies.
+- Bearer credentials stored strictly in **HttpOnly, SameSite=Lax, Secure** cookies to eliminate client-side XSS theft.
 - Refresh tokens hashed with **SHA-256** before database persistence.
 - Automatic **token reuse detection**: attempting to use a rotated token revokes the entire session family.
-- Timing-safe comparisons (`crypto.timingSafeEqual`) on all challenges.
-- Distributed sliding-window rate limiting prevents brute-force on authentication endpoints.
 - Competitive score integrity: client scores must match signed server `runToken` bounds and packet event sums to enter leaderboards.
+- Rate limiting on authentication routes prevents brute-force credential stuffing.
 
 ---
 
