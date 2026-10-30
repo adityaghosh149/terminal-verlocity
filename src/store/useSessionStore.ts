@@ -23,7 +23,7 @@ export const useSessionStore = create<SessionState>((set) => ({
       set({ username: null, isCallsignModalOpen: false });
       return;
     }
-    const sanitized = rawUsername.trim().toUpperCase().slice(0, 15);
+    const sanitized = rawUsername.trim().slice(0, 20);
     set({ username: sanitized, isCallsignModalOpen: false });
   },
 

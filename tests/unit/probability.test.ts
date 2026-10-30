@@ -100,4 +100,35 @@ describe("ProbabilityEngine", () => {
     expect(bin0.sampleSize).toBe(2);
     expect(bin0.observedCorruptionRate).toBe(0.5); // 1 out of 2 corrupted
   });
+
+  it("enforces strict difficulty word lengths: 4 in easy, 5 in medium, 6 in hard", async () => {
+    const { EASY_WORDS, MEDIUM_WORDS, HARD_WORDS } = await import("@/lib/probability/words");
+
+    expect(EASY_WORDS.length).toBeGreaterThan(200);
+    expect(MEDIUM_WORDS.length).toBeGreaterThan(200);
+    expect(HARD_WORDS.length).toBeGreaterThan(200);
+
+    // All easy words must be exactly 4 letters
+    for (const word of EASY_WORDS) {
+      expect(word.length).toBe(4);
+      expect(/^[A-Z]+$/.test(word)).toBe(true);
+    }
+
+    // All medium words must be exactly 5 letters
+    for (const word of MEDIUM_WORDS) {
+      expect(word.length).toBe(5);
+      expect(/^[A-Z]+$/.test(word)).toBe(true);
+    }
+
+    // All hard words must be exactly 6 letters
+    for (const word of HARD_WORDS) {
+      expect(word.length).toBe(6);
+      expect(/^[A-Z]+$/.test(word)).toBe(true);
+    }
+
+    // No duplicates in any list
+    expect(new Set(EASY_WORDS).size).toBe(EASY_WORDS.length);
+    expect(new Set(MEDIUM_WORDS).size).toBe(MEDIUM_WORDS.length);
+    expect(new Set(HARD_WORDS).size).toBe(HARD_WORDS.length);
+  });
 });

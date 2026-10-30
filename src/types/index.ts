@@ -32,6 +32,9 @@ export interface PacketEvent {
   outcome: PacketOutcome;
   timestampMs: number;
   pointsDelta: number;
+  pureTypingPoints?: number;
+  multiplierPoints?: number;
+  speedBonusPoints?: number;
   wpm: number;
   accuracy: number;
 }
@@ -46,6 +49,11 @@ export interface GameRunResult {
   endTime: number;
   durationSeconds: number;
   finalScore: number;
+  actualTypingScore?: number;
+  multiplierScore?: number;
+  speedBonusScore?: number;
+  expectedScore?: number;
+  luckScore?: number;
   wpm: number;
   accuracy: number;
   totalPacketsSpawned: number;

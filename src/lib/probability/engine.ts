@@ -1,4 +1,5 @@
 import { Difficulty, PacketDefinition, PacketOutcome, PacketEvent } from "@/types";
+import { round2 } from "@/lib/utils";
 
 import { SeededRandom } from "./prng";
 import { EASY_WORDS, MEDIUM_WORDS, HARD_WORDS } from "./words";
@@ -19,7 +20,7 @@ export class ProbabilityEngine {
     this.validateProbability(corruptionProbability);
     const p = corruptionProbability;
     const ev = (1 - p) * reward - p * corruptionPenalty - interceptionCost;
-    return Number(ev.toFixed(2));
+    return round2(ev);
   }
 
   static validateProbability(p: number): void {
@@ -37,12 +38,12 @@ export class ProbabilityEngine {
 
   static estimateTypingDuration(codeLength: number, assumedWpm = 60): number {
     const charsPerSec = (assumedWpm * 5) / 60;
-    return Math.max(0.5, Number((codeLength / charsPerSec).toFixed(2)));
+    return Math.max(0.5, round2(codeLength / charsPerSec));
   }
 
   static calculateValuePerSecond(ev: number, codeLength: number, assumedWpm = 60): number {
     const duration = this.estimateTypingDuration(codeLength, assumedWpm);
-    return Number((ev / duration).toFixed(2));
+    return round2(ev / duration);
   }
 
   static sampleOutcome(
@@ -54,7 +55,7 @@ export class ProbabilityEngine {
     const isCorrupted = roll < corruptionProbability;
     return {
       outcome: isCorrupted ? "corrupted" : "clean",
-      roll: Number(roll.toFixed(4)),
+      roll: round2(roll),
     };
   }
 
@@ -65,7 +66,8 @@ export class ProbabilityEngine {
     spawnTimeMs: number,
     laneIndex: number = 0,
     excludeInitials: string[] = [],
-    forcedTier?: "safe" | "caution" | "danger"
+    forcedTier?: "safe" | "caution" | "danger",
+    excludeWords: string[] = []
   ): PacketDefinition {
     const config = {
       easy: {
@@ -103,12 +105,20 @@ export class ProbabilityEngine {
       },
     }[difficulty];
 
+    // Exclude words that are already on screen or recently spawned to maximize variety
+    const upperExcludeWords = new Set(excludeWords.map((w) => w.toUpperCase()));
+    let candidatePool = config.words.filter((w) => !upperExcludeWords.has(w.toUpperCase()));
+    if (candidatePool.length === 0) {
+      // Fallback if recent memory pool is full
+      candidatePool = config.words.slice();
+    }
+
     // Exclude starting letters that are already active on screen to prevent first-letter conflicts
-    const upperExclude = excludeInitials.map((c) => c.toUpperCase());
-    const availableWords = config.words.filter(
-      (w) => !upperExclude.includes(w.charAt(0).toUpperCase())
+    const upperExcludeInitials = excludeInitials.map((c) => c.toUpperCase());
+    const availableWords = candidatePool.filter(
+      (w) => !upperExcludeInitials.includes(w.charAt(0).toUpperCase())
     );
-    const wordsPool = availableWords.length > 0 ? availableWords : config.words;
+    const wordsPool = availableWords.length > 0 ? availableWords : candidatePool;
     const code = rng.pick(wordsPool);
 
     let corruptionProbability: number;
@@ -157,8 +167,8 @@ export class ProbabilityEngine {
     const valuePerSecond = this.calculateValuePerSecond(expectedValue, code.length);
 
     // Add small natural variance (-0.6s to +0.6s) so multiple packets never expire on the exact same millisecond
-    const durationVariance = Number(rng.nextFloat(-0.6, 0.6).toFixed(1));
-    const packetDuration = Math.max(4.5, Number((config.durationSeconds + durationVariance).toFixed(1)));
+    const durationVariance = round2(rng.nextFloat(-0.6, 0.6));
+    const packetDuration = Math.max(4.5, round2(config.durationSeconds + durationVariance));
 
     return {
       id,
@@ -220,9 +230,9 @@ export class ProbabilityEngine {
       if (sampleSize === 0) {
         return {
           binLabel: b.label,
-          binMidpoint: Number(((b.min + b.max) / 2).toFixed(2)),
+          binMidpoint: round2((b.min + b.max) / 2),
           sampleSize: 0,
-          expectedCorruptionRate: Number(((b.min + b.max) / 2).toFixed(2)),
+          expectedCorruptionRate: round2((b.min + b.max) / 2),
           observedCorruptionRate: 0,
         };
       }
@@ -236,10 +246,10 @@ export class ProbabilityEngine {
 
       return {
         binLabel: b.label,
-        binMidpoint: Number(((b.min + b.max) / 2).toFixed(2)),
+        binMidpoint: round2((b.min + b.max) / 2),
         sampleSize,
-        expectedCorruptionRate: Number(avgExpected.toFixed(3)),
-        observedCorruptionRate: Number(observedRate.toFixed(3)),
+        expectedCorruptionRate: round2(avgExpected),
+        observedCorruptionRate: round2(observedRate),
       };
     });
   }
@@ -251,18 +261,22 @@ export class ProbabilityEngine {
     const missedPackets = events.filter((e) => e.action === "missed");
     const ignoredPackets = events.filter((e) => e.action === "ignored");
 
-    const totalExpectedValue = Number(
-      intercepted.reduce((sum, e) => sum + e.expectedValue, 0).toFixed(1)
+    const totalExpectedValue = round2(
+      intercepted.reduce((sum, e) => sum + e.expectedValue, 0)
     );
-    const totalRealizedScore = intercepted.reduce((sum, e) => sum + e.pointsDelta, 0);
-
-    const grossRewardsEarned = cleanPackets.reduce((sum, e) => sum + e.reward, 0);
-    const grossPenaltiesIncurred = corruptedPackets.reduce(
-      (sum, e) => sum + e.corruptionPenalty,
-      0
+    const totalRealizedScore = round2(
+      intercepted.reduce((sum, e) => sum + e.pointsDelta, 0)
     );
 
-    const evDiscrepancy = totalRealizedScore - totalExpectedValue;
+    const grossRewardsEarned = round2(cleanPackets.reduce((sum, e) => sum + e.reward, 0));
+    const grossPenaltiesIncurred = round2(
+      corruptedPackets.reduce(
+        (sum, e) => sum + e.corruptionPenalty,
+        0
+      )
+    );
+
+    const evDiscrepancy = round2(totalRealizedScore - totalExpectedValue);
     const positiveEvCount = intercepted.filter((e) => e.expectedValue > 0).length;
     const rationalDecisionIndex =
       intercepted.length > 0 ? (positiveEvCount / intercepted.length) * 100 : 100;
@@ -278,10 +292,10 @@ export class ProbabilityEngine {
       grossRewardsEarned,
       grossPenaltiesIncurred,
       evDiscrepancy,
-      rationalDecisionIndex: Number(rationalDecisionIndex.toFixed(1)),
+      rationalDecisionIndex: round2(rationalDecisionIndex),
       luckIndex:
         totalExpectedValue !== 0
-          ? Number(((totalRealizedScore / totalExpectedValue) * 100).toFixed(1))
+          ? round2((totalRealizedScore / totalExpectedValue) * 100)
           : 100,
     };
   }

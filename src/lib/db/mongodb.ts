@@ -27,6 +27,8 @@ export async function connectToDatabase(): Promise<typeof mongoose | null> {
     return cached.conn;
   }
 
+  const uri = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/terminal_velocity";
+
   if (!cached.promise) {
     const opts: mongoose.ConnectOptions = {
       bufferCommands: false,
@@ -35,7 +37,7 @@ export async function connectToDatabase(): Promise<typeof mongoose | null> {
     };
 
     cached.promise = mongoose
-      .connect(MONGODB_URI, opts)
+      .connect(uri, opts)
       .then((m) => {
         return m;
       })

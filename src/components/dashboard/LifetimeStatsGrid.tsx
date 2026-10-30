@@ -3,6 +3,7 @@
 import React from "react";
 import { Award, Zap, Shield, Activity } from "lucide-react";
 import { UserProfile } from "@/types";
+import { formatNumber } from "@/lib/utils";
 
 interface LifetimeStatsGridProps {
   playerStats: any;
@@ -18,13 +19,11 @@ export function LifetimeStatsGrid({ playerStats, user }: LifetimeStatsGridProps)
           LIFETIME SCORE
         </div>
         <div className="text-2xl font-black text-foreground mt-1">
-          {playerStats?.user?.lifetimeScore?.toLocaleString() ||
-            (user ? user.lifetimeScore.toLocaleString() : "0")}
+          {formatNumber(playerStats?.user?.lifetimeScore ?? user?.lifetimeScore ?? 0)}
         </div>
         <div className="text-[10px] text-muted-foreground mt-1">
           Best Run:{" "}
-          {playerStats?.user?.bestScore?.toLocaleString() ||
-            (user ? user.bestScore.toLocaleString() : "0")}{" "}
+          {formatNumber(playerStats?.user?.bestScore ?? user?.bestScore ?? 0)}{" "}
           PTS
         </div>
       </div>
@@ -35,10 +34,10 @@ export function LifetimeStatsGrid({ playerStats, user }: LifetimeStatsGridProps)
           TYPING VELOCITY
         </div>
         <div className="text-2xl font-black text-primary glow-text mt-1">
-          {playerStats?.user?.bestWpm || (user ? user.bestWpm : 0)} WPM
+          {formatNumber(playerStats?.user?.bestWpm ?? user?.bestWpm ?? 0)} WPM
         </div>
         <div className="text-[10px] text-muted-foreground mt-1">
-          Avg Accuracy: {playerStats?.user?.avgAccuracy || (user ? user.avgAccuracy : 100)}%
+          Avg Accuracy: {formatNumber(playerStats?.user?.avgAccuracy ?? user?.avgAccuracy ?? 100)}%
         </div>
       </div>
 

@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { Trophy, User, Zap, Clock, Calendar, ArrowRight, Shield } from "lucide-react";
 import { LeaderboardEntry } from "@/types";
+import { useAuthStore } from "@/store/useAuthStore";
 import { useSessionStore } from "@/store/useSessionStore";
 
 import { LeaderboardFilters } from "@/components/leaderboard/LeaderboardFilters";
@@ -11,7 +12,9 @@ import { LeaderboardTable } from "@/components/leaderboard/LeaderboardTable";
 import { LeaderboardPagination } from "@/components/leaderboard/LeaderboardPagination";
 
 export default function LeaderboardPage() {
-  const { username, openCallsignModal } = useSessionStore();
+  const { user, openAuthModal } = useAuthStore();
+  const { username } = useSessionStore();
+  const effectiveUsername = user?.username || username;
   const [boardType, setBoardType] = useState<"all-time" | "daily">("all-time");
 
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
@@ -101,13 +104,13 @@ export default function LeaderboardPage() {
           </h1>
           <p className="text-xs text-muted-foreground mt-1 font-mono">
             {boardType === "daily"
-              ? "Synchronized daily challenge: All operatives face the identical seed today"
-              : "All-time verified combat records across Classic and Survival arcade modes"}
+              ? "Synchronized daily challenge: All users face the identical seed today"
+              : "All-time verified records across Classic and Survival arcade modes"}
           </p>
         </div>
 
         {/* User Standing Card */}
-        {username ? (
+        {effectiveUsername ? (
           myRank ? (
             <div className="p-3.5 rounded-xl bg-card border border-primary/40 flex items-center gap-4 glow-primary font-mono">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/15 text-primary border border-primary/30 font-black text-lg">
@@ -117,7 +120,7 @@ export default function LeaderboardPage() {
                 <div className="text-[10px] text-muted-foreground uppercase">
                   {boardType === "daily" ? "TODAY'S RANK" : "ALL-TIME RANK"}
                 </div>
-                <div className="text-sm font-bold text-foreground">@{username}</div>
+                <div className="text-sm font-bold text-foreground">@{effectiveUsername}</div>
                 <div className="text-xs text-primary">
                   Best Score: {myBestScore?.toLocaleString()} PTS
                 </div>
@@ -125,18 +128,18 @@ export default function LeaderboardPage() {
             </div>
           ) : (
             <div className="p-3.5 rounded-xl bg-card border border-border flex items-center gap-3 font-mono text-xs">
-              <span className="text-muted-foreground">USERNAME:</span>
-              <span className="font-bold text-primary">@{username}</span>
+              <span className="text-muted-foreground">USER:</span>
+              <span className="font-bold text-primary">@{effectiveUsername}</span>
               <span className="text-muted-foreground text-[10px]">(No runs yet)</span>
             </div>
           )
         ) : (
           <button
-            onClick={openCallsignModal}
+            onClick={() => openAuthModal("login")}
             className="inline-flex items-center gap-2 bg-secondary hover:bg-secondary/80 text-foreground font-mono font-bold px-4 py-2.5 rounded-lg text-xs border border-border transition-all"
           >
             <User className="h-4 w-4 text-primary" />
-            SET USERNAME
+            LOG IN TO RANK
           </button>
         )}
       </div>
@@ -228,7 +231,7 @@ export default function LeaderboardPage() {
         <LeaderboardTable
           entries={entries}
           loading={loading}
-          currentUsername={username || undefined}
+          currentUsername={effectiveUsername || undefined}
         />
         <LeaderboardPagination
           page={page}

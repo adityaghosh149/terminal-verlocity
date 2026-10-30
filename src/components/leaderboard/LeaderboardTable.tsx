@@ -3,6 +3,7 @@
 import React from "react";
 import { Medal, User, Loader2 } from "lucide-react";
 import { LeaderboardEntry } from "@/types";
+import { formatNumber } from "@/lib/utils";
 
 interface LeaderboardTableProps {
   entries: LeaderboardEntry[];
@@ -11,7 +12,7 @@ interface LeaderboardTableProps {
 }
 
 export function LeaderboardTable({ entries, loading, currentUsername }: LeaderboardTableProps) {
-  const normCurrent = currentUsername?.trim().toUpperCase();
+  const normCurrent = currentUsername?.trim().toLowerCase();
 
   return (
     <div className="overflow-x-auto">
@@ -46,7 +47,7 @@ export function LeaderboardTable({ entries, loading, currentUsername }: Leaderbo
           ) : (
             entries.map((entry) => {
               const isTop3 = entry.rank <= 3;
-              const isCurrentUser = normCurrent && entry.username.toUpperCase() === normCurrent;
+              const isCurrentUser = normCurrent && entry.username.toLowerCase() === normCurrent;
               const medalColor =
                 entry.rank === 1
                   ? "text-amber-400"
@@ -91,7 +92,7 @@ export function LeaderboardTable({ entries, loading, currentUsername }: Leaderbo
                     </div>
                   </td>
                   <td className="py-3.5 px-4 font-black text-primary text-sm glow-text">
-                    {entry.score.toLocaleString()}
+                    {formatNumber(entry.score)}
                   </td>
                   <td className="py-3.5 px-4 uppercase text-[11px] font-semibold text-muted-foreground">
                     {entry.mode}
@@ -109,8 +110,8 @@ export function LeaderboardTable({ entries, loading, currentUsername }: Leaderbo
                       {entry.difficulty}
                     </span>
                   </td>
-                  <td className="py-3.5 px-4 text-foreground font-semibold">{entry.wpm} WPM</td>
-                  <td className="py-3.5 px-4 text-foreground font-semibold">{entry.accuracy}%</td>
+                  <td className="py-3.5 px-4 text-foreground font-semibold">{formatNumber(entry.wpm)} WPM</td>
+                  <td className="py-3.5 px-4 text-foreground font-semibold">{formatNumber(entry.accuracy)}%</td>
                   <td className="py-3.5 px-4 text-muted-foreground">
                     <span className="text-emerald-400">{entry.cleanPackets}</span> /{" "}
                     <span className="text-rose-400">{entry.corruptedPackets || 0}</span>

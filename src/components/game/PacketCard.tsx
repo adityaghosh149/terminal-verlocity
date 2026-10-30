@@ -9,6 +9,7 @@ interface PacketCardProps {
   isTarget: boolean;
   currentInput: string;
   totalDuration: number;
+  playfieldHeight?: number;
   onClick: () => void;
 }
 
@@ -17,10 +18,13 @@ export function PacketCard({
   isTarget,
   currentInput,
   totalDuration,
+  playfieldHeight,
   onClick,
 }: PacketCardProps) {
   const progress = Math.max(0, Math.min(1, 1 - packet.durationSeconds / totalDuration));
-  const topY = progress * 460 + 15; // 15px to 475px
+  // Scale descent travel distance dynamically according to the actual terminal height
+  const maxTravel = Math.max(260, (playfieldHeight || 550) - 110);
+  const topY = progress * maxTravel + 15;
   const lanePercent = LANES[packet.laneIndex % 4];
 
   // Standardized Risk Tiers
@@ -96,7 +100,7 @@ export function PacketCard({
       {/* Countdown Progress & Timer */}
       <div className="flex items-center justify-between text-[10px] font-mono mt-1 text-muted-foreground">
         <span>TIME:</span>
-        <span className="font-bold">{Math.max(0, packet.durationSeconds).toFixed(1)}s</span>
+        <span className="font-bold">{Math.max(0, packet.durationSeconds).toFixed(2)}s</span>
       </div>
 
       <div className="w-full bg-secondary/80 h-1 rounded-full overflow-hidden mt-1">

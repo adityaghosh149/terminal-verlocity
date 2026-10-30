@@ -4,44 +4,91 @@ import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useGameStore } from "@/store/useGameStore";
 import { useSessionStore } from "@/store/useSessionStore";
+import { useAuthStore } from "@/store/useAuthStore";
 import { ProbabilityEngine, SeededRandom } from "@/lib/probability/engine";
 import { soundEngine } from "@/lib/audio/soundEngine";
+import { round2 } from "@/lib/utils";
 import { PacketDefinition, PacketEvent, GameRunResult } from "@/types";
 
 import {
   FloatingFeedback,
   getComboMultiplier,
+  getSpeedBonusPercent,
   LANES,
   PhaserGameProps,
 } from "./types";
 import { GameHud } from "./GameHud";
 import { PacketCard } from "./PacketCard";
 import { GameReadyOverlay } from "./GameReadyOverlay";
+import { GamePauseOverlay } from "./GamePauseOverlay";
 import { GameOverModal } from "./GameOverModal";
 import { GameBottomBar } from "./GameBottomBar";
 
 export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
   const router = useRouter();
   const { soundEnabled, setSoundEnabled, screenShake, setLastRunResult } = useGameStore();
-  const { username, openCallsignModal } = useSessionStore();
-  const usernameRef = useRef(username);
+  const { username } = useSessionStore();
+  const { user, openAuthModal } = useAuthStore();
+  const effectiveUsername = user?.username || username;
+  const usernameRef = useRef(effectiveUsername);
   useEffect(() => {
-    usernameRef.current = username;
-  }, [username]);
+    usernameRef.current = effectiveUsername;
+  }, [effectiveUsername]);
 
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Live game telemetry state
   const [score, setScore] = useState(0);
-  const [lives, setLives] = useState(3);
+  const [lives, setLives] = useState(5);
   const [combo, setCombo] = useState(0);
   const [maxCombo, setMaxCombo] = useState(0);
   const [timeRemaining, setTimeRemaining] = useState(mode === "classic" ? 90 : 0);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [currentInput, setCurrentInput] = useState("");
   const [activeTargetId, setActiveTargetId] = useState<string | null>(null);
-  const [gameStatus, setGameStatus] = useState<"ready" | "playing" | "gameover">("ready");
+  const [gameStatus, setGameStatus] = useState<"ready" | "playing" | "paused" | "gameover">("ready");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const playfieldRef = useRef<HTMLDivElement>(null);
+  const [playfieldHeight, setPlayfieldHeight] = useState<number>(550);
+
+  useEffect(() => {
+    const updatePlayfieldHeight = () => {
+      if (playfieldRef.current) {
+        const h = playfieldRef.current.clientHeight;
+        if (h > 100) setPlayfieldHeight(h);
+      }
+    };
+    updatePlayfieldHeight();
+    window.addEventListener("resize", updatePlayfieldHeight);
+    let ro: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== "undefined" && playfieldRef.current) {
+      ro = new ResizeObserver(() => updatePlayfieldHeight());
+      ro.observe(playfieldRef.current);
+    }
+    return () => {
+      window.removeEventListener("resize", updatePlayfieldHeight);
+      ro?.disconnect();
+    };
+  }, [isFullscreen]);
+
+  // Fullscreen Mode Toggle
+  const toggleFullscreen = useCallback(() => {
+    if (!containerRef.current) return;
+    if (!document.fullscreenElement) {
+      containerRef.current.requestFullscreen().catch(() => {});
+    } else {
+      document.exitFullscreen().catch(() => {});
+    }
+  }, []);
+
+  useEffect(() => {
+    const onFsChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener("fullscreenchange", onFsChange);
+    return () => document.removeEventListener("fullscreenchange", onFsChange);
+  }, []);
 
   // Floating score and damage indicators
   const [feedbacks, setFeedbacks] = useState<FloatingFeedback[]>([]);
@@ -102,6 +149,9 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
   const livesRef = useRef(lives);
   livesRef.current = lives;
 
+  const pausedAtRef = useRef<number>(0);
+  const targetStartTimeRef = useRef<number>(Date.now());
+
   // Internal run refs
   const runDataRef = useRef<{
     runId: string;
@@ -114,6 +164,7 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
     keystrokesCorrect: number;
     packetCounter: number;
     lastSpawnTime: number;
+    recentWords: string[];
   }>({
     runId: "",
     runToken: "",
@@ -125,9 +176,13 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
     keystrokesCorrect: 0,
     packetCounter: 0,
     lastSpawnTime: 0,
+    recentWords: [],
   });
 
-  // Spawn helper: picks the lane with fewest active packets
+  // Spawn helper: intelligently selects lane adhering to user rules:
+  // 1. Max 2 words per lane at any time.
+  // 2. Prioritize empty lanes. If all 4 are empty, pick any uniformly at random.
+  // 3. If multiple lanes are empty (e.g. 2 empty), pick uniformly at random among them (never hardcoded to first lane).
   const getOptimalLane = useCallback((packets: PacketDefinition[]): number => {
     const laneCounts = [0, 0, 0, 0];
     for (const pkt of packets) {
@@ -135,15 +190,36 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
         laneCounts[pkt.laneIndex]++;
       }
     }
-    let minLane = 0;
-    let minCount = laneCounts[0];
-    for (let i = 1; i < 4; i++) {
-      if (laneCounts[i] < minCount) {
-        minCount = laneCounts[i];
-        minLane = i;
-      }
+
+    // Filter lanes that have fewer than 2 active words
+    const lanesUnderLimit = [0, 1, 2, 3].filter((l) => laneCounts[l] < 2);
+    const candidatePool = lanesUnderLimit.length > 0 ? lanesUnderLimit : [0, 1, 2, 3];
+
+    // Find the minimum count among available candidates (e.g., 0 if any empty)
+    const minCount = Math.min(...candidatePool.map((l) => laneCounts[l]));
+    const leastPopulatedLanes = candidatePool.filter((l) => laneCounts[l] === minCount);
+
+    // Pick uniformly at random among the least populated lanes
+    const chosenIndex = Math.floor(Math.random() * leastPopulatedLanes.length);
+    return leastPopulatedLanes[chosenIndex];
+  }, []);
+
+  // Toggle Pause / Resume
+  const togglePause = useCallback(() => {
+    if (gameStatusRef.current === "playing") {
+      pausedAtRef.current = Date.now();
+      setGameStatus("paused");
+      gameStatusRef.current = "paused";
+    } else if (gameStatusRef.current === "paused") {
+      const pauseDuration = Date.now() - (pausedAtRef.current || Date.now());
+      runDataRef.current.startTime += pauseDuration;
+      runDataRef.current.lastSpawnTime += pauseDuration;
+      setGameStatus("playing");
+      gameStatusRef.current = "playing";
+      setTimeout(() => {
+        containerRef.current?.focus();
+      }, 10);
     }
-    return minLane;
   }, []);
 
   // Tactical Emergency EMP Defusal Ability: Vaporizes lowest imminent threat packet without shield penalty
@@ -176,8 +252,8 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
     }
 
     // Award 50% reward points as partial tactical bypass
-    const defusedPoints = Math.round(targetPkt.reward * 0.5);
-    const newScore = scoreRef.current + defusedPoints;
+    const defusedPoints = round2(targetPkt.reward * 0.5);
+    const newScore = round2(scoreRef.current + defusedPoints);
     scoreRef.current = newScore;
     setScore(newScore);
 
@@ -193,6 +269,9 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
       outcome: "clean",
       timestampMs: Date.now() - runDataRef.current.startTime,
       pointsDelta: defusedPoints,
+      pureTypingPoints: defusedPoints,
+      multiplierPoints: 0,
+      speedBonusPoints: 0,
       wpm: 60,
       accuracy: 100,
     });
@@ -211,7 +290,7 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
       const res = await fetch("/api/game/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mode, difficulty, username: usernameRef.current || "OPERATIVE" }),
+        body: JSON.stringify({ mode, difficulty, username: usernameRef.current || "PLAYER" }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -222,22 +301,27 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
       // Immediately generate an initial wave with guaranteed safe starter and unique initial letters
       const initialPackets: PacketDefinition[] = [];
       const waveCount = difficulty === "easy" ? 2 : difficulty === "medium" ? 3 : 4;
+      const initialRecentWords: string[] = [];
       for (let i = 0; i < waveCount; i++) {
         const usedInitials = initialPackets.map((p) => p.code.charAt(0));
+        const usedWords = [...initialPackets.map((p) => p.code), ...initialRecentWords];
         // Guarantee packet 0 is 100% Safe (0 shield risk), and subsequent packets safe/caution
         const forcedTier = i === 0 ? "safe" : i === 1 ? "caution" : undefined;
+        const lane = getOptimalLane(initialPackets);
         const pkt = ProbabilityEngine.generatePacket(
           `pkt_${i + 1}`,
           difficulty,
           rng,
           now - i * 400,
-          i % 4,
+          lane,
           usedInitials,
-          forcedTier
+          forcedTier,
+          usedWords
         );
         // Stagger initial progress slightly for natural flow
         pkt.durationSeconds -= i * 0.8;
         initialPackets.push(pkt);
+        initialRecentWords.push(pkt.code);
       }
 
       runDataRef.current = {
@@ -251,6 +335,7 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
         keystrokesCorrect: 0,
         packetCounter: waveCount,
         lastSpawnTime: now,
+        recentWords: initialRecentWords,
       };
 
       setScore(0);
@@ -282,7 +367,7 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
     } catch (err) {
       console.error("Game init failed:", err);
     }
-  }, [mode, difficulty]);
+  }, [mode, difficulty, getOptimalLane]);
 
   // Handle immediate restart
   const handleRestart = useCallback(() => {
@@ -302,16 +387,49 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
 
       const run = runDataRef.current;
       const endTime = Date.now();
-      const durationSeconds = Math.max(1, Math.round((endTime - run.startTime) / 1000));
+      const durationSeconds = round2(Math.max(1, (endTime - run.startTime) / 1000));
 
       const wpm =
         run.keystrokesCorrect > 0
-          ? Math.round(run.keystrokesCorrect / 5 / (durationSeconds / 60))
+          ? round2(run.keystrokesCorrect / 5 / (durationSeconds / 60))
           : 0;
       const accuracy =
         run.keystrokesTotal > 0
-          ? Math.round((run.keystrokesCorrect / run.keystrokesTotal) * 100)
+          ? round2((run.keystrokesCorrect / run.keystrokesTotal) * 100)
           : 100;
+
+      let pureTypingTotal = 0;
+      let multiplierTotal = 0;
+      let speedBonusTotal = 0;
+      let expectedTotal = 0;
+
+      for (const e of run.events) {
+        if (e.action === "intercepted") {
+          expectedTotal += (e.expectedValue || 0);
+          const pure = e.pureTypingPoints !== undefined
+            ? e.pureTypingPoints
+            : (e.outcome === "clean" ? e.reward : -e.corruptionPenalty);
+          pureTypingTotal += pure;
+          multiplierTotal += (e.multiplierPoints || 0);
+          speedBonusTotal += (e.speedBonusPoints || 0);
+        } else if (e.action === "missed") {
+          pureTypingTotal += (e.pointsDelta || 0);
+        }
+      }
+
+      expectedTotal = round2(expectedTotal);
+      pureTypingTotal = round2(pureTypingTotal);
+      multiplierTotal = round2(multiplierTotal);
+      speedBonusTotal = round2(speedBonusTotal);
+
+      // Invariant: pureTypingTotal + multiplierTotal + speedBonusTotal === finalScoreVal
+      const componentsSum = round2(pureTypingTotal + multiplierTotal + speedBonusTotal);
+      if (componentsSum !== finalScoreVal) {
+        pureTypingTotal = round2(finalScoreVal - (multiplierTotal + speedBonusTotal));
+      }
+
+      // Luck score: strictly computed using expected EV and pure typing score, NOT total score
+      const luckScore = round2(pureTypingTotal - expectedTotal);
 
       const runResult: GameRunResult = {
         runId: run.runId,
@@ -322,6 +440,11 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
         endTime,
         durationSeconds,
         finalScore: finalScoreVal,
+        actualTypingScore: pureTypingTotal,
+        multiplierScore: multiplierTotal,
+        speedBonusScore: speedBonusTotal,
+        expectedScore: expectedTotal,
+        luckScore,
         wpm,
         accuracy,
         totalPacketsSpawned: run.packetCounter,
@@ -330,15 +453,8 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
         corruptedCount: run.events.filter((e) => e.outcome === "corrupted").length,
         missedCount: run.events.filter((e) => e.action === "missed").length,
         ignoredCount: run.events.filter((e) => e.action === "ignored").length,
-        totalExpectedValue: Number(
-          run.events
-            .filter((e) => e.action === "intercepted")
-            .reduce((sum, e) => sum + e.expectedValue, 0)
-            .toFixed(1)
-        ),
-        totalRealizedScore: run.events
-          .filter((e) => e.action === "intercepted")
-          .reduce((sum, e) => sum + e.pointsDelta, 0),
+        totalExpectedValue: expectedTotal,
+        totalRealizedScore: finalScoreVal,
         maxCombo: maxComboVal,
         events: run.events,
         status: "validated",
@@ -356,12 +472,17 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
           body: JSON.stringify({
             runToken: run.runToken,
             finalScore: finalScoreVal,
+            actualTypingScore: pureTypingTotal,
+            multiplierScore: multiplierTotal,
+            speedBonusScore: speedBonusTotal,
+            expectedScore: expectedTotal,
+            luckScore,
             wpm,
             accuracy,
             maxCombo: maxComboVal,
             events: run.events,
             endTime,
-            username: usernameRef.current || "OPERATIVE",
+            username: usernameRef.current || "Player",
           }),
         });
       } catch (err) {
@@ -383,7 +504,6 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
 
     // Target concurrency and spawn cooldowns
     const targetCount = difficulty === "easy" ? 3 : difficulty === "medium" ? 4 : 5;
-    const minSpawnDelay = difficulty === "easy" ? 1400 : difficulty === "medium" ? 950 : 650;
 
     const loop = (currentTime: number) => {
       const dt = (currentTime - lastTime) / 1000;
@@ -396,7 +516,7 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
         if (mode === "classic") {
           setTimeRemaining((prev) => {
             if (prev <= 1) {
-              handleGameOver(score, maxCombo);
+              handleGameOver(scoreRef.current, maxComboRef.current);
               return 0;
             }
             return prev - 1;
@@ -408,8 +528,26 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
 
       // 2. High-speed smooth spawning
       const now = Date.now();
+      const elapsedSec = Math.max(0, (now - runDataRef.current.startTime) / 1000);
+
+      // Speed scaling: keep base falling speed consistent with difficulty at start,
+      // but progressively accelerate with elapsed time and score!
+      const speedMult = Math.min(2.4, 1.0 + elapsedSec * 0.005 + scoreRef.current * 0.00003);
+      const effectiveDt = dt * speedMult;
+
       setActivePackets((prev) => {
         let current = [...prev];
+
+        // Responsive spawn cadence: if the playfield has < 2 packets, refill immediately (75ms).
+        // Typists are never limited by slow spawn rates.
+        const minSpawnDelay =
+          current.length < 2
+            ? 75
+            : difficulty === "easy"
+            ? 420
+            : difficulty === "medium"
+            ? 320
+            : 220;
 
         // Check if we need to spawn a new packet
         if (
@@ -435,6 +573,12 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
             forcedTier = runDataRef.current.rng.next() > 0.4 ? "safe" : "caution";
           }
 
+          const activeWords = current.map((p) => p.code);
+          const allExcludedWords = [
+            ...activeWords,
+            ...(runDataRef.current.recentWords || []),
+          ];
+
           const newPkt = ProbabilityEngine.generatePacket(
             `pkt_${runDataRef.current.packetCounter}`,
             difficulty,
@@ -442,18 +586,26 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
             now,
             lane,
             activeInitials,
-            forcedTier
+            forcedTier,
+            allExcludedWords
           );
           current.push(newPkt);
+
+          // Maintain recent words history (sliding window of 50 words) to prevent repetition
+          if (!runDataRef.current.recentWords) runDataRef.current.recentWords = [];
+          runDataRef.current.recentWords.push(newPkt.code);
+          if (runDataRef.current.recentWords.length > 50) {
+            runDataRef.current.recentWords.shift();
+          }
         }
 
-        // 3. Move packets downwards with exact dt
+        // 3. Move packets downwards with progressive effectiveDt
         const next: PacketDefinition[] = [];
         let escapedCount = 0;
         const escapedLanes: number[] = [];
 
         for (const pkt of current) {
-          const newDur = pkt.durationSeconds - dt;
+          const newDur = pkt.durationSeconds - effectiveDt;
           if (newDur <= 0) {
             // Packet reached bottom firewall line & timed out!
             escapedCount++;
@@ -478,7 +630,10 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
               action: "missed",
               outcome: "missed",
               timestampMs: Date.now() - runDataRef.current.startTime,
-              pointsDelta: -Math.round(pkt.reward * 0.3),
+              pointsDelta: -round2(pkt.reward * 0.3),
+              pureTypingPoints: -round2(pkt.reward * 0.3),
+              multiplierPoints: 0,
+              speedBonusPoints: 0,
               wpm: 0,
               accuracy: 0,
             });
@@ -490,7 +645,7 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
         if (escapedCount > 0) {
           triggerShake();
           for (const l of escapedLanes) {
-            addFeedback("LOST! -1 SHIELD", "missed", l, 460);
+            addFeedback("LOST! -1 SHIELD", "missed", l, Math.max(260, playfieldHeight - 80));
           }
           comboRef.current = 0;
           setCombo(0);
@@ -519,9 +674,7 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
     gameStatus,
     getOptimalLane,
     handleGameOver,
-    maxCombo,
     mode,
-    score,
     triggerShake,
   ]);
 
@@ -550,6 +703,7 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
           target = candidates[0];
           activeTargetIdRef.current = target.id;
           setActiveTargetId(target.id);
+          targetStartTimeRef.current = Date.now();
           currentInputRef.current = upperChar;
           setCurrentInput(upperChar);
           runDataRef.current.keystrokesCorrect += 1;
@@ -577,6 +731,7 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
           resolvedTarget = alt;
           activeTargetIdRef.current = alt.id;
           setActiveTargetId(alt.id);
+          targetStartTimeRef.current = Date.now();
           nextInput = prefixAttempt;
         } else {
           // Mistype on active target: reset current target focus
@@ -602,12 +757,26 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
           runDataRef.current.rng
         );
 
+        // Calculate typing speed (WPM) on this packet to award Speed Bonus
+        const typingDurationSec = Math.max(0.2, (Date.now() - targetStartTimeRef.current) / 1000);
+        const wordLength = resolvedTarget.code.length;
+        const packetWpm = Math.round((wordLength / 5) / (typingDurationSec / 60));
+        const speedBonusPct = getSpeedBonusPercent(packetWpm);
+
         let pointsDelta = 0;
+        let pureTypingPoints = 0;
+        let multiplierPoints = 0;
+        let speedBonusPoints = 0;
         const currentCombo = comboRef.current;
         const comboMultiplier = getComboMultiplier(currentCombo);
 
         if (outcome === "clean") {
-          pointsDelta = resolvedTarget.reward * comboMultiplier;
+          pureTypingPoints = resolvedTarget.reward;
+          multiplierPoints = round2(resolvedTarget.reward * (comboMultiplier - 1));
+          // Speed bonus is calculated strictly on the pure typing score
+          speedBonusPoints = speedBonusPct > 0 ? round2(pureTypingPoints * (speedBonusPct / 100)) : 0;
+          pointsDelta = round2(pureTypingPoints + multiplierPoints + speedBonusPoints);
+
           soundEngine.playCleanInterception();
           const nextCombo = currentCombo + 1;
           comboRef.current = nextCombo;
@@ -624,8 +793,9 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
             setEmpCharges((c) => c + 1);
             addFeedback("⚡ EMP RESTORED!", "clean", 1, 180);
           }
+          const bonusTag = speedBonusPct > 0 ? ` (+${speedBonusPct}% SPD)` : "";
           addFeedback(
-            `+${pointsDelta} PTS (${comboMultiplier}x)`,
+            `+${pointsDelta} PTS (${comboMultiplier}x${bonusTag})`,
             "clean",
             resolvedTarget.laneIndex,
             250
@@ -633,6 +803,9 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
         } else {
           // Corrupted packet!
           pointsDelta = -resolvedTarget.corruptionPenalty;
+          pureTypingPoints = pointsDelta;
+          multiplierPoints = 0;
+          speedBonusPoints = 0;
           soundEngine.playCorruptedGlitch();
           triggerShake();
           comboRef.current = 0;
@@ -652,7 +825,8 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
               setLives(nextLives);
             } else {
               // Emergency Shield Deflection at 1 life: spares elimination, increases point penalty
-              pointsDelta = Math.round(pointsDelta * 1.5);
+              pointsDelta = round2(pointsDelta * 1.5);
+              pureTypingPoints = pointsDelta;
               addFeedback("DEFLECTED! SHIELD SAVED", "corrupted", resolvedTarget.laneIndex, 220);
             }
           }
@@ -677,11 +851,11 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
           }
         }
 
-        const newScore = Math.max(0, scoreRef.current + pointsDelta);
+        const newScore = Math.max(0, round2(scoreRef.current + pointsDelta));
         scoreRef.current = newScore;
         setScore(newScore);
 
-        // Log packet event
+        // Log packet event with detailed score decomposition
         runDataRef.current.events.push({
           packetId: resolvedTarget.id,
           code: resolvedTarget.code,
@@ -693,7 +867,10 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
           outcome,
           timestampMs: Date.now() - runDataRef.current.startTime,
           pointsDelta,
-          wpm: 65,
+          pureTypingPoints,
+          multiplierPoints,
+          speedBonusPoints,
+          wpm: packetWpm,
           accuracy: 96,
         });
 
@@ -730,6 +907,47 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
         return;
       }
 
+      // Immediate restart shortcuts anytime: Ctrl+Enter or F2
+      if ((e.ctrlKey && e.key === "Enter") || e.key === "F2") {
+        e.preventDefault();
+        handleRestart();
+        return;
+      }
+
+      // Pause toggle with Escape
+      if (e.key === "Escape") {
+        e.preventDefault();
+        if (gameStatusRef.current === "playing" || gameStatusRef.current === "paused") {
+          togglePause();
+        }
+        return;
+      }
+
+      // Fullscreen shortcut: F during ready/pause, or Alt+Enter
+      if (
+        (e.key.toLowerCase() === "f" && (gameStatusRef.current === "ready" || gameStatusRef.current === "paused")) ||
+        (e.altKey && e.key === "Enter")
+      ) {
+        e.preventDefault();
+        toggleFullscreen();
+        return;
+      }
+
+      // When paused: R restarts run, Space or Enter resumes
+      if (gameStatusRef.current === "paused") {
+        if (e.key.toLowerCase() === "r") {
+          e.preventDefault();
+          handleRestart();
+          return;
+        }
+        if (e.key === " " || e.key === "Enter") {
+          e.preventDefault();
+          togglePause();
+          return;
+        }
+        return;
+      }
+
       // If in ready or gameover state, Space or Enter starts / restarts immediately
       if (
         (gameStatusRef.current === "ready" || gameStatusRef.current === "gameover") &&
@@ -737,7 +955,7 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
       ) {
         e.preventDefault();
         if (!usernameRef.current) {
-          openCallsignModal();
+          openAuthModal("login");
           return;
         }
         initializeRun();
@@ -758,7 +976,7 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
       ) {
         e.preventDefault();
         if (!usernameRef.current) {
-          openCallsignModal();
+          openAuthModal("login");
           return;
         }
         initializeRun().then(() => {
@@ -786,14 +1004,6 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
         return;
       }
 
-      if (e.key === "Escape") {
-        activeTargetIdRef.current = null;
-        setActiveTargetId(null);
-        currentInputRef.current = "";
-        setCurrentInput("");
-        return;
-      }
-
       if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
         processKey(e.key);
       }
@@ -801,7 +1011,7 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [initializeRun, processKey, triggerEmp]);
+  }, [handleRestart, initializeRun, openAuthModal, processKey, toggleFullscreen, togglePause, triggerEmp]);
 
   const totalDuration = difficulty === "easy" ? 11 : difficulty === "medium" ? 8.5 : 6.5;
 
@@ -811,7 +1021,11 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
       tabIndex={0}
       role="region"
       aria-label="Terminal Velocity Arcade Playfield"
-      className={`relative w-full max-w-5xl mx-auto h-[690px] rounded-xl border border-primary/30 bg-card/95 overflow-hidden shadow-2xl flex flex-col font-sans select-none focus:outline-none focus:ring-1 focus:ring-primary/50 ${
+      className={`relative w-full ${
+        isFullscreen
+          ? "fixed inset-0 z-50 h-screen w-screen max-w-none rounded-none border-none bg-background"
+          : "max-w-5xl mx-auto h-[690px] rounded-xl border border-primary/30 bg-card/95"
+      } overflow-hidden shadow-2xl flex flex-col font-sans select-none focus:outline-none focus:ring-1 focus:ring-primary/50 ${
         isShaking ? "animate-shake ring-2 ring-rose-500/80" : ""
       }`}
       onClick={() => {
@@ -831,12 +1045,16 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
         timeRemaining={timeRemaining}
         elapsedSeconds={elapsedSeconds}
         soundEnabled={soundEnabled}
+        isPaused={gameStatus === "paused"}
+        isFullscreen={isFullscreen}
         onRestart={handleRestart}
         onToggleSound={() => setSoundEnabled(!soundEnabled)}
+        onTogglePause={togglePause}
+        onToggleFullscreen={toggleFullscreen}
       />
 
       {/* Main Arcade Canvas Playfield (4 Lanes) */}
-      <div className="relative flex-1 bg-black/75 overflow-hidden">
+      <div ref={playfieldRef} className="relative flex-1 bg-black/75 overflow-hidden">
         {/* Audio-reactive subtle grid lines & 4 lane guides */}
         <div
           className={`absolute inset-0 terminal-grid pointer-events-none transition-all duration-150 ${
@@ -901,6 +1119,11 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
           />
         )}
 
+        {/* Pause Overlay */}
+        {gameStatus === "paused" && (
+          <GamePauseOverlay onResume={togglePause} onRestart={handleRestart} />
+        )}
+
         {/* Game Over Overlay */}
         {gameStatus === "gameover" && (
           <GameOverModal
@@ -918,7 +1141,7 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
         )}
 
         {/* 4 Multi-Lane Descending Packets */}
-        {gameStatus === "playing" &&
+        {(gameStatus === "playing" || gameStatus === "paused") &&
           activePackets.map((pkt) => (
             <PacketCard
               key={pkt.id}
@@ -926,9 +1149,12 @@ export function PhaserGame({ mode, difficulty, onGameOver }: PhaserGameProps) {
               isTarget={activeTargetId === pkt.id}
               currentInput={currentInput}
               totalDuration={totalDuration}
+              playfieldHeight={playfieldHeight}
               onClick={() => {
+                if (gameStatus === "paused") return;
                 setActiveTargetId(pkt.id);
                 activeTargetIdRef.current = pkt.id;
+                targetStartTimeRef.current = Date.now();
                 setCurrentInput("");
                 currentInputRef.current = "";
               }}

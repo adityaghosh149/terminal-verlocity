@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/db/mongodb";
 import { GameRun } from "@/models/GameRun";
 import { inMemoryStore } from "@/lib/db/inMemoryStore";
+import { round2 } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +12,7 @@ export async function GET(req: NextRequest) {
     const boardType = searchParams.get("type") || "all-time"; // "all-time" | "daily"
     const mode = searchParams.get("mode") || "all";
     const difficulty = searchParams.get("difficulty") || "all";
-    const usernameParam = searchParams.get("username")?.trim().toUpperCase();
+    const usernameParam = searchParams.get("username")?.trim();
     const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
     const limit = Math.min(50, Math.max(1, parseInt(searchParams.get("limit") || "15", 10)));
     const skip = (page - 1) * limit;
@@ -97,10 +98,11 @@ export async function GET(req: NextRequest) {
     if (usernameParam) {
       if (boardType === "daily") {
         if (db) {
+          const userRegex = new RegExp(`^${usernameParam.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")}$`, "i");
           const filter: Record<string, any> = {
             status: "validated",
             seed: todaySeed,
-            username: usernameParam,
+            username: userRegex,
           };
           if (difficulty !== "all") filter.difficulty = difficulty;
           const bestRun = await GameRun.findOne(filter).sort({ finalScore: -1 });
@@ -130,9 +132,10 @@ export async function GET(req: NextRequest) {
         }
       } else {
         if (db) {
+          const userRegex = new RegExp(`^${usernameParam.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")}$`, "i");
           const filter: Record<string, any> = {
             status: "validated",
-            username: usernameParam,
+            username: userRegex,
             mode: mode !== "all" ? mode : { $in: ["classic", "endless"] },
           };
           if (difficulty !== "all") filter.difficulty = difficulty;
@@ -170,7 +173,7 @@ export async function GET(req: NextRequest) {
     }
 
     const leaderboard = rawRuns.map((run: any, idx: number) => {
-      const runUser = run.username || "OPERATIVE";
+      const runUser = run.username || "PLAYER";
       return {
         rank: skip + idx + 1,
         runId: run.runId,
@@ -178,11 +181,11 @@ export async function GET(req: NextRequest) {
         username: runUser,
         displayName: runUser,
         level: Math.floor(Math.sqrt((run.finalScore || 0) / 40)) + 1,
-        score: run.finalScore,
+        score: round2(run.finalScore),
         mode: run.mode,
         difficulty: run.difficulty,
-        wpm: run.wpm,
-        accuracy: run.accuracy,
+        wpm: round2(run.wpm),
+        accuracy: round2(run.accuracy),
         cleanPackets: run.cleanCount,
         corruptedPackets: run.corruptedCount,
         date: run.createdAt,
@@ -195,7 +198,7 @@ export async function GET(req: NextRequest) {
       page,
       totalPages: Math.max(1, Math.ceil(totalCount / limit)),
       myRank,
-      myBestScore,
+      myBestScore: myBestScore !== null ? round2(myBestScore) : null,
       boardType,
       dailyDate: todayDate,
       dailySeed: todaySeed,

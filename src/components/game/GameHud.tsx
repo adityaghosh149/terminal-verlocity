@@ -10,8 +10,13 @@ import {
   VolumeX,
   RotateCcw,
   Sparkles,
+  Pause,
+  Play,
+  Maximize,
+  Minimize,
 } from "lucide-react";
 import { getComboMultiplier } from "./types";
+import { formatNumber } from "@/lib/utils";
 
 interface GameHudProps {
   score: number;
@@ -22,8 +27,12 @@ interface GameHudProps {
   timeRemaining: number;
   elapsedSeconds: number;
   soundEnabled: boolean;
+  isPaused: boolean;
+  isFullscreen?: boolean;
   onRestart: () => void;
   onToggleSound: () => void;
+  onTogglePause: () => void;
+  onToggleFullscreen?: () => void;
 }
 
 export function GameHud({
@@ -35,28 +44,32 @@ export function GameHud({
   timeRemaining,
   elapsedSeconds,
   soundEnabled,
+  isPaused,
+  isFullscreen,
   onRestart,
   onToggleSound,
+  onTogglePause,
+  onToggleFullscreen,
 }: GameHudProps) {
   return (
-    <div className="flex items-center justify-between px-6 py-3.5 border-b border-border/80 bg-secondary/50 backdrop-blur-md z-20">
-      <div className="flex items-center gap-6">
+    <div className="flex items-center justify-between px-5 py-3 border-b border-border/80 bg-secondary/50 backdrop-blur-md z-20">
+      <div className="flex items-center gap-5 sm:gap-6">
         {/* Score */}
         <div>
           <div className="text-[10px] font-mono tracking-widest text-muted-foreground uppercase">
-            CURRENT SCORE
+            SCORE
           </div>
-          <div className="text-3xl font-black font-display tracking-tight text-primary glow-text">
-            {score.toLocaleString()}
+          <div className="text-2xl sm:text-3xl font-black font-display tracking-tight text-primary glow-text">
+            {formatNumber(score)}
           </div>
         </div>
 
-        {/* Clean Integer Streak Combo */}
+        {/* Clean Streak Combo */}
         <div className="hidden sm:block">
           <div className="text-[10px] font-mono tracking-widest text-muted-foreground uppercase">
-            STREAK COMBO
+            COMBO
           </div>
-          <div className="text-2xl font-black font-display text-amber-400 flex items-center gap-1">
+          <div className="text-xl sm:text-2xl font-black font-display text-amber-400 flex items-center gap-1">
             <Flame
               className={`h-5 w-5 ${
                 combo >= 3 ? "text-amber-400 fill-amber-400/40" : "text-muted-foreground"
@@ -71,19 +84,19 @@ export function GameHud({
           </div>
         </div>
 
-        {/* Shields / Firewall Integrity */}
+        {/* 5 Shields */}
         <div>
           <div className="text-[10px] font-mono tracking-widest text-muted-foreground uppercase">
             SHIELDS ({lives}/5)
           </div>
-          <div className="flex items-center gap-1.5 mt-1">
+          <div className="flex items-center gap-1 mt-0.5">
             {[1, 2, 3, 4, 5].map((idx) => (
               <Shield
                 key={idx}
-                className={`h-5 w-5 transition-all ${
+                className={`h-4 sm:h-5 w-4 sm:w-5 transition-all ${
                   idx <= lives
                     ? "text-primary fill-primary/30 drop-shadow-[0_0_8px_currentColor]"
-                    : "text-muted-foreground/30 fill-transparent"
+                    : "text-muted-foreground/25 fill-transparent"
                 }`}
               />
             ))}
@@ -91,12 +104,12 @@ export function GameHud({
         </div>
       </div>
 
-      {/* Center: Mode Specific Status Telemetry */}
-      <div className="hidden md:flex items-center gap-2 font-mono text-xs">
+      {/* Center: Mode Badge */}
+      <div className="hidden lg:flex items-center gap-2 font-mono text-xs">
         {mode === "classic" && (
           <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 border border-primary/30 text-primary font-bold">
             <Zap className="h-3.5 w-3.5" />
-            <span>CLASSIC 90S SPRINT</span>
+            <span>CLASSIC (90s)</span>
             <span className="text-muted-foreground">//</span>
             <span className="text-amber-400">{difficulty.toUpperCase()}</span>
           </div>
@@ -104,7 +117,7 @@ export function GameHud({
         {mode === "endless" && (
           <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-bold">
             <Shield className="h-3.5 w-3.5" />
-            <span>SURVIVAL WAVE {Math.floor(elapsedSeconds / 30) + 1}</span>
+            <span>SURVIVAL</span>
             <span className="text-muted-foreground">//</span>
             <span className="text-amber-400">{difficulty.toUpperCase()}</span>
           </div>
@@ -112,21 +125,21 @@ export function GameHud({
         {mode === "daily" && (
           <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 font-bold">
             <Sparkles className="h-3.5 w-3.5" />
-            <span>DAILY CHALLENGE</span>
+            <span>DAILY</span>
             <span className="text-muted-foreground">//</span>
             <span className="text-primary">{difficulty.toUpperCase()}</span>
           </div>
         )}
       </div>
 
-      {/* Right side: Mode-Adaptive Timer, Restart button & Sound toggle */}
-      <div className="flex items-center gap-3 sm:gap-4">
+      {/* Right side: Timer, Pause, Restart, Sound */}
+      <div className="flex items-center gap-2.5 sm:gap-3">
         <div>
           <div className="text-[10px] font-mono tracking-widest text-muted-foreground uppercase text-right">
-            {mode === "classic" ? "TIME REMAINING" : "SURVIVAL TIME"}
+            {mode === "classic" ? "TIME" : "ELAPSED"}
           </div>
           <div
-            className={`text-2xl font-black font-display flex items-center justify-end gap-1.5 ${
+            className={`text-xl sm:text-2xl font-black font-display flex items-center justify-end gap-1 ${
               mode === "classic" && timeRemaining <= 10
                 ? "text-rose-500 animate-pulse glow-danger"
                 : mode === "classic" && timeRemaining <= 20
@@ -134,7 +147,7 @@ export function GameHud({
                 : "text-foreground"
             }`}
           >
-            <Clock className="h-5 w-5 text-primary" />
+            <Clock className="h-4 sm:h-5 w-4 sm:w-5 text-primary" />
             {mode === "classic"
               ? `${timeRemaining}s`
               : `${Math.floor(elapsedSeconds / 60)}:${(elapsedSeconds % 60)
@@ -143,22 +156,43 @@ export function GameHud({
           </div>
         </div>
 
-        {/* In-Game Restart Button */}
+        {/* Pause Button */}
         <button
+          type="button"
+          onClick={(e) => {
+            e.currentTarget.blur();
+            onTogglePause();
+          }}
+          className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-xs font-mono font-bold transition-all ${
+            isPaused
+              ? "bg-amber-400 text-black border-amber-400 shadow-md"
+              : "bg-secondary/80 border-border text-muted-foreground hover:text-foreground hover:border-primary/50"
+          }`}
+          title="Pause Game [ESC]"
+        >
+          {isPaused ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
+          <span className="hidden sm:inline">{isPaused ? "RESUME" : "PAUSE"}</span>
+        </button>
+
+        {/* Restart Button */}
+        <button
+          type="button"
           onClick={(e) => {
             e.currentTarget.blur();
             onRestart();
           }}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-secondary/80 border border-border hover:border-primary/50 text-xs font-mono font-bold text-muted-foreground hover:text-foreground transition-all active:scale-95 shadow-sm glow-hover"
-          title="Restart Current Game"
+          className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-secondary/80 border border-border hover:border-primary/50 text-xs font-mono font-bold text-muted-foreground hover:text-foreground transition-all active:scale-95 shadow-sm"
+          title="Restart Game [Ctrl+Enter]"
         >
           <RotateCcw className="h-3.5 w-3.5 text-primary" />
           <span className="hidden sm:inline">RESTART</span>
         </button>
 
+        {/* Sound Toggle */}
         <button
+          type="button"
           onClick={onToggleSound}
-          className="p-2 rounded-lg bg-secondary/80 border border-border hover:border-primary/50 text-muted-foreground hover:text-foreground transition-colors"
+          className="p-1.5 rounded-lg bg-secondary/80 border border-border hover:border-primary/50 text-muted-foreground hover:text-foreground transition-colors"
           title="Toggle Sound"
         >
           {soundEnabled ? (
@@ -167,6 +201,22 @@ export function GameHud({
             <VolumeX className="h-4 w-4" />
           )}
         </button>
+
+        {/* Fullscreen Toggle */}
+        {onToggleFullscreen && (
+          <button
+            type="button"
+            onClick={onToggleFullscreen}
+            className="p-1.5 rounded-lg bg-secondary/80 border border-border hover:border-primary/50 text-muted-foreground hover:text-foreground transition-colors"
+            title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen [F]"}
+          >
+            {isFullscreen ? (
+              <Minimize className="h-4 w-4 text-primary" />
+            ) : (
+              <Maximize className="h-4 w-4" />
+            )}
+          </button>
+        )}
       </div>
     </div>
   );

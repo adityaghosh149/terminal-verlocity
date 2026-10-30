@@ -10,18 +10,23 @@ import {
   Settings,
   User as UserIcon,
   Zap,
-  Edit2,
-  RotateCcw,
+  LogIn,
+  LogOut,
+  UserPlus,
 } from "lucide-react";
-import { useSessionStore } from "@/store/useSessionStore";
+import { useAuthStore } from "@/store/useAuthStore";
 import { useGameStore } from "@/store/useGameStore";
 import { ThemeSelector } from "@/components/ui/ThemeSelector";
-import { CallsignModal } from "@/components/auth/CallsignModal";
+import { AuthModal } from "@/components/auth/AuthModal";
 
 export function Navbar() {
   const pathname = usePathname();
-  const { username, openCallsignModal, clearSession } = useSessionStore();
+  const { user, openAuthModal, logout, checkAuth } = useAuthStore();
   const { theme } = useGameStore();
+
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
 
   useEffect(() => {
     if (typeof document !== "undefined") {
@@ -30,9 +35,9 @@ export function Navbar() {
   }, [theme]);
 
   const navLinks = [
-    { href: "/game", label: "Play Arcade", icon: Terminal },
+    { href: "/game", label: "Play Game", icon: Terminal },
     { href: "/leaderboard", label: "Leaderboard", icon: Trophy },
-    { href: "/dashboard", label: "Telemetry & Stats", icon: BarChart3 },
+    { href: "/dashboard", label: "Profile & Stats", icon: BarChart3 },
     { href: "/settings", label: "Settings", icon: Settings },
   ];
 
@@ -77,48 +82,57 @@ export function Navbar() {
             })}
           </nav>
 
-          {/* Right side: Themes & Operative Callsign */}
-          <div className="flex items-center gap-3">
+          {/* Right side: Themes & Authentication */}
+          <div className="flex items-center gap-2.5 sm:gap-3">
             {/* Custom Styled Theme Switcher */}
             <ThemeSelector />
 
-            {username ? (
-              <div className="flex items-center gap-1.5 font-mono">
-                <button
-                  type="button"
-                  onClick={openCallsignModal}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/30 text-xs text-primary font-bold hover:bg-primary/20 transition-all"
-                  title="Change username"
+            {user ? (
+              <div className="flex items-center gap-2 font-mono">
+                <div
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/30 text-xs text-primary font-bold shadow-sm"
+                  title={`Logged in as ${user.name}`}
                 >
                   <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                  @{username}
-                </button>
+                  <span>@{user.username}</span>
+                </div>
 
                 <button
                   type="button"
-                  onClick={clearSession}
-                  className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                  title="Reset Username"
+                  onClick={() => logout()}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-secondary/80 border border-border text-xs font-mono font-bold text-muted-foreground hover:text-destructive hover:border-destructive/40 transition-all"
+                  title="Log out"
                 >
-                  <RotateCcw className="h-3.5 w-3.5" />
+                  <LogOut className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">LOGOUT</span>
                 </button>
               </div>
             ) : (
-              <button
-                type="button"
-                onClick={openCallsignModal}
-                className="text-xs bg-primary text-primary-foreground font-display font-bold px-3 py-1.5 rounded-lg hover:opacity-90 transition-opacity flex items-center gap-1.5 glow-primary"
-              >
-                <UserIcon className="h-3.5 w-3.5" />
-                SET USERNAME
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => openAuthModal("login")}
+                  className="text-xs font-display font-bold px-3 py-1.5 rounded-lg border border-border bg-secondary/60 text-muted-foreground hover:text-foreground hover:border-primary/40 transition-all flex items-center gap-1.5"
+                >
+                  <LogIn className="h-3.5 w-3.5" />
+                  LOG IN
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openAuthModal("register")}
+                  className="text-xs bg-primary text-primary-foreground font-display font-bold px-3 py-1.5 rounded-lg hover:opacity-90 transition-opacity flex items-center gap-1.5 glow-primary shadow-sm"
+                >
+                  <UserPlus className="h-3.5 w-3.5" />
+                  REGISTER
+                </button>
+              </div>
             )}
           </div>
         </div>
       </header>
 
-      {/* Global Callsign Entry Modal */}
-      <CallsignModal />
+      {/* Global Auth Modal */}
+      <AuthModal />
     </>
   );
 }

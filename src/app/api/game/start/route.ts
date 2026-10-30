@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
     }
 
     const { mode, difficulty, username } = parsed.data;
-    const operativeName = (username || "").trim().toUpperCase().slice(0, 15) || "OPERATIVE";
+    const playerName = (username || "").trim().slice(0, 20) || "Player";
 
     const runId = "run_" + crypto.randomUUID();
     const startTime = Date.now();
@@ -35,10 +35,10 @@ export async function POST(req: NextRequest) {
       seed = `seed_${crypto.randomBytes(8).toString("hex")}`;
     }
 
-    // Sign a tamper-evident run authorization token containing the operative callsign
+    // Sign a tamper-evident run authorization token containing the username
     const runToken = await new SignJWT({
       runId,
-      username: operativeName,
+      username: playerName,
       mode,
       difficulty,
       seed,
@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
       success: true,
       runId,
       runToken,
-      username: operativeName,
+      username: playerName,
       mode,
       difficulty,
       seed,

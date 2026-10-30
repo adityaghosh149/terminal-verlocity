@@ -7,7 +7,7 @@ interface GameBottomBarProps {
   activeTargetId: string | null;
   currentInput: string;
   empCharges: number;
-  gameStatus: "ready" | "playing" | "gameover";
+  gameStatus: "ready" | "playing" | "paused" | "gameover";
   onTriggerEmp: () => void;
   onProcessKey: (char: string) => void;
 }

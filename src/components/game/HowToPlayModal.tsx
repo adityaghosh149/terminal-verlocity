@@ -6,10 +6,11 @@ import {
   HelpCircle,
   X,
   Target,
-  Calculator,
   Award,
   Shield,
   Zap,
+  Flame,
+  Maximize,
 } from "lucide-react";
 
 export function HowToPlayModal() {
@@ -67,140 +68,134 @@ export function HowToPlayModal() {
           HOW TO PLAY & WIN
         </h2>
         <p className="text-xs text-muted-foreground mt-1 mb-6">
-          Type fast, evaluate risk, and protect your 3 firewall shields.
+          Simple rules: type words before they hit bottom, build multiplier streaks, type fast for bonuses, and keep your 5 shields intact!
         </p>
 
-        <div className="space-y-5 text-sm">
-          {/* 1. Core Rule: Intercept Before Timeout */}
+        <div className="space-y-4 text-sm">
+          {/* 1. Word Lengths by Difficulty */}
           <div className="p-4 rounded-xl bg-secondary/30 border border-border/80">
             <h3 className="font-display font-bold text-foreground text-base flex items-center gap-2 mb-2">
               <Target className="h-4 w-4 text-primary" />
-              1. Type Words Before They Disappear (Smart Targeting)
-            </h3>
-            <p className="text-muted-foreground text-xs leading-relaxed">
-              Words descend across 4 lanes. Type the letters on your keyboard to lock target. If multiple words share a prefix, the game automatically routes to your intended word as you type, or you can click any word to force lock.
-            </p>
-            <div className="mt-2.5 p-2.5 rounded bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-mono font-bold flex items-center gap-2">
-              <Shield className="h-4 w-4 shrink-0" />
-              <span>CRITICAL: If a packet reaches the bottom defense line without being typed, it breaches your firewall: -1 SHIELD!</span>
-            </div>
-          </div>
-
-          {/* 2. Color-Coded Risk Tiers */}
-          <div className="p-4 rounded-xl bg-secondary/30 border border-border/80">
-            <h3 className="font-display font-bold text-foreground text-base flex items-center gap-2 mb-2">
-              <Calculator className="h-4 w-4 text-primary" />
-              2. Three Simple Color Tiers (Risk vs. Reward)
+              1. Word Lengths & Typing Lock
             </h3>
             <p className="text-muted-foreground text-xs leading-relaxed mb-3">
-              Every packet displays its corruption risk. To prevent unfair traps, 🟢 Safe and 🟡 Caution packets NEVER risk your shields!
+              Words descend in 4 vertical lanes. Type the first letter of any word on your keyboard to lock onto it, then type the rest to catch it before it reaches the bottom firewall!
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs font-mono">
-              <div className="p-3 rounded-lg bg-emerald-950/20 border border-emerald-500/40">
-                <div className="text-emerald-400 font-black text-sm">🟢 SAFE</div>
-                <div className="text-muted-foreground mt-1 text-[11px] space-y-1">
-                  <div>• Risk: <strong>10% – 20%</strong></div>
-                  <div>• Reward: <strong>+50 to +75 PTS</strong></div>
-                  <div className="text-emerald-400 font-bold pt-1">🛡️ 0 SHIELD RISK</div>
-                </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs font-mono">
+              <div className="p-2.5 rounded-lg bg-emerald-950/20 border border-emerald-500/40">
+                <span className="text-emerald-400 font-bold block">🟢 EASY</span>
+                <span className="text-muted-foreground text-[11px]">Exact 4-letter words (DATA, RISK, CODE)</span>
               </div>
-
-              <div className="p-3 rounded-lg bg-amber-950/20 border border-amber-500/40">
-                <div className="text-amber-400 font-black text-sm">🟡 CAUTION</div>
-                <div className="text-muted-foreground mt-1 text-[11px] space-y-1">
-                  <div>• Risk: <strong>25% – 40%</strong></div>
-                  <div>• Reward: <strong>+100 to +140 PTS</strong></div>
-                  <div className="text-amber-400 font-bold pt-1">🛡️ 0 SHIELD RISK</div>
-                </div>
+              <div className="p-2.5 rounded-lg bg-amber-950/20 border border-amber-500/40">
+                <span className="text-amber-400 font-bold block">🟡 MEDIUM</span>
+                <span className="text-muted-foreground text-[11px]">Exact 5-letter words (CYBER, LOGIC, SHIFT)</span>
               </div>
-
-              <div className="p-3 rounded-lg bg-rose-950/20 border border-rose-500/40">
-                <div className="text-rose-400 font-black text-sm">🔴 DANGER</div>
-                <div className="text-muted-foreground mt-1 text-[11px] space-y-1">
-                  <div>• Risk: <strong>50% – 65%</strong></div>
-                  <div>• Reward: <strong>+180 to +250 PTS</strong></div>
-                  <div className="text-rose-400 font-bold pt-1">⚡ Jackpot gamble (-1 Shield)</div>
-                </div>
+              <div className="p-2.5 rounded-lg bg-rose-950/20 border border-rose-500/40">
+                <span className="text-rose-400 font-bold block">🔴 HARD</span>
+                <span className="text-muted-foreground text-[11px]">Exact 6-letter words (MATRIX, CIPHER, QUANTUM)</span>
               </div>
             </div>
           </div>
 
-          {/* 3. Firewall Shields & Guaranteed Escape */}
-          <div className="p-4 rounded-xl bg-secondary/30 border border-border/80">
-            <h3 className="font-display font-bold text-foreground text-base flex items-center gap-2 mb-2">
-              <Shield className="h-4 w-4 text-primary" />
-              3. Guaranteed Escape & Firewall Shields (3 Lives)
-            </h3>
-            <div className="space-y-2 text-xs text-muted-foreground">
-              <div className="flex items-center gap-2">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shrink-0" />
-                <span><strong>Always Safe:</strong> The spawner GUARANTEES at least one 🟢 SAFE packet is active on screen at all times. You are never trapped!</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shrink-0" />
-                <span><strong>Typing Defends Shields:</strong> Intercepting 🟢 Safe or 🟡 Caution packets prevents firewall breach with ZERO shield risk.</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="h-1.5 w-1.5 rounded-full bg-rose-500 shrink-0" />
-                <span><strong>-1 Shield:</strong> A packet breaches the bottom line, or you gamble on a corrupted 🔴 Danger packet.</span>
-              </div>
-            </div>
-          </div>
-
-          {/* 4. Integer Multipliers */}
+          {/* 2. Streak Multipliers */}
           <div className="p-4 rounded-xl bg-secondary/30 border border-border/80">
             <h3 className="font-display font-bold text-amber-400 text-base flex items-center gap-2 mb-2">
-              <Award className="h-4 w-4" />
-              4. Streak Combo Multipliers
+              <Flame className="h-4 w-4" />
+              2. Clean Streak Multipliers
             </h3>
-            <p className="text-muted-foreground text-xs leading-relaxed mb-2">
-              Type clean packets consecutively to trigger integer score multipliers:
+            <p className="text-muted-foreground text-xs leading-relaxed mb-2.5">
+              Type clean words consecutively without errors to unlock massive point multipliers:
             </p>
             <div className="grid grid-cols-3 gap-2 text-center font-mono text-xs">
-              <div className="p-2 rounded bg-black/40 border border-border">
-                <div className="text-amber-400 font-bold text-sm">2x COMBO</div>
+              <div className="p-2.5 rounded bg-black/40 border border-border">
+                <div className="text-amber-400 font-bold text-sm">2x MULTIPLIER</div>
                 <div className="text-[10px] text-muted-foreground mt-0.5">3 in a row</div>
               </div>
-              <div className="p-2 rounded bg-black/40 border border-border">
-                <div className="text-amber-400 font-bold text-sm">3x COMBO</div>
+              <div className="p-2.5 rounded bg-black/40 border border-border">
+                <div className="text-amber-400 font-bold text-sm">3x MULTIPLIER</div>
                 <div className="text-[10px] text-muted-foreground mt-0.5">6 in a row</div>
               </div>
-              <div className="p-2 rounded bg-black/40 border border-primary/50 glow-primary">
+              <div className="p-2.5 rounded bg-black/40 border border-primary/50 glow-primary">
                 <div className="text-primary font-black text-sm">4x MAX</div>
                 <div className="text-[10px] text-primary mt-0.5">10+ in a row</div>
               </div>
             </div>
           </div>
 
-          {/* 5. Tactical EMP Blast */}
+          {/* 3. Typing Speed Bonus */}
           <div className="p-4 rounded-xl bg-secondary/30 border border-border/80">
-            <h3 className="font-display font-bold text-primary text-base flex items-center gap-2 mb-2">
+            <h3 className="font-display font-bold text-emerald-400 text-base flex items-center gap-2 mb-2">
               <Zap className="h-4 w-4" />
-              5. Tactical EMP Blast ([TAB] Key or Button)
+              3. Typing Speed Bonus (+20% to +100%)
             </h3>
-            <p className="text-muted-foreground text-xs leading-relaxed mb-2">
-              You start every run with <strong>1 Tactical EMP Blast</strong>. Press <kbd className="px-1.5 py-0.5 rounded bg-black/60 border border-border text-primary font-mono text-[10px]">TAB</kbd> or click the EMP button to vaporize the lowest packet before it breaches your firewall line.
+            <p className="text-muted-foreground text-xs leading-relaxed mb-2.5">
+              The faster your fingers type each word, the more bonus points you earn! Speed bonuses are applied directly to your pure typing score (e.g. a 50% speed bonus on a 100 pt word = +50 pts):
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-mono">
-              <div className="p-2.5 rounded bg-primary/10 border border-primary/30 text-primary">
-                🛡️ <strong>Preserves Shields:</strong> Defuses imminent threat with zero shield loss & gives +50% PTS!
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center font-mono text-xs">
+              <div className="p-2 rounded bg-secondary/50 border border-border">
+                <div className="font-bold text-foreground text-xs">30+ WPM</div>
+                <div className="text-primary text-[11px] font-bold">+20% Bonus</div>
               </div>
-              <div className="p-2.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-400">
-                ⚡ <strong>Recharge:</strong> Earn +1 EMP charge whenever you hit a <strong>10x Streak Combo</strong>!
+              <div className="p-2 rounded bg-secondary/50 border border-border">
+                <div className="font-bold text-foreground text-xs">50+ WPM</div>
+                <div className="text-primary text-[11px] font-bold">+35% Bonus</div>
+              </div>
+              <div className="p-2 rounded bg-secondary/50 border border-border">
+                <div className="font-bold text-foreground text-xs">70+ WPM</div>
+                <div className="text-primary text-[11px] font-bold">+50% Bonus</div>
+              </div>
+              <div className="p-2 rounded bg-secondary/50 border border-border">
+                <div className="font-bold text-foreground text-xs">90+ WPM</div>
+                <div className="text-primary text-[11px] font-bold">+75% Bonus</div>
+              </div>
+              <div className="p-2 rounded bg-primary/20 border border-primary/50 glow-primary">
+                <div className="font-bold text-primary text-xs">110+ WPM</div>
+                <div className="text-emerald-400 text-[11px] font-black">+100% DOUBLE!</div>
               </div>
             </div>
           </div>
 
-          {/* 6. Data Science Note */}
-          <div className="p-3.5 rounded-xl bg-primary/5 border border-primary/20 text-xs">
-            <div className="font-mono font-bold text-primary mb-1">
-              DATA SCIENCE METRIC // EXPECTED VALUE (EV)
-            </div>
-            <div className="font-mono text-[11px] text-muted-foreground">
-              <div className="my-1 text-primary font-bold text-xs">
-                EV = (1 - p) × Reward - (p × Penalty)
+          {/* 4. Fair 5-Shield Defense */}
+          <div className="p-4 rounded-xl bg-secondary/30 border border-border/80">
+            <h3 className="font-display font-bold text-foreground text-base flex items-center gap-2 mb-2">
+              <Shield className="h-4 w-4 text-primary" />
+              4. Fair 5-Shield Defense
+            </h3>
+            <div className="space-y-2 text-xs text-muted-foreground">
+              <div className="flex items-center gap-2">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shrink-0" />
+                <span><strong>5 Shields:</strong> You start every run with 5 shields (lives).</span>
               </div>
-              Every packet displays its mathematical EV. Over repeated arcade runs, prioritizing packets with higher EV generates provably higher statistical scores.
+              <div className="flex items-center gap-2">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shrink-0" />
+                <span><strong>No Shield Loss on Safe/Caution:</strong> 🟢 Safe (&lt;25%) and 🟡 Caution (25%–49%) words <strong className="text-emerald-400">never cost a shield</strong> even if corrupted!</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="h-1.5 w-1.5 rounded-full bg-rose-500 shrink-0" />
+                <span><strong>Shield Risk:</strong> Only 🔴 Danger words (≥50%) risk a shield if corrupted, or if any word reaches the bottom defense line unintercepted.</span>
+              </div>
+            </div>
+          </div>
+
+          {/* 5. Special Controls */}
+          <div className="p-4 rounded-xl bg-secondary/30 border border-border/80">
+            <h3 className="font-display font-bold text-primary text-base flex items-center gap-2 mb-2">
+              <Maximize className="h-4 w-4" />
+              5. Tactical EMP Blast & Full Screen Mode
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs font-mono">
+              <div className="p-3 rounded bg-primary/10 border border-primary/30">
+                <div className="text-primary font-bold">[TAB] EMP BLAST</div>
+                <p className="text-muted-foreground text-[11px] mt-1">
+                  Instantly clears the lowest word before it breaches your firewall. Defuses with 0 shield loss & +50% points. Recharge +1 charge at every 10x streak!
+                </p>
+              </div>
+              <div className="p-3 rounded bg-secondary/60 border border-border">
+                <div className="text-emerald-400 font-bold">[F] FULL SCREEN</div>
+                <p className="text-muted-foreground text-[11px] mt-1">
+                  Press <kbd className="px-1 py-0.5 rounded bg-black/60 border border-border text-foreground">F</kbd> anytime to toggle distraction-free full screen mode with responsive edge-to-edge word descent.
+                </p>
+              </div>
             </div>
           </div>
         </div>
@@ -208,9 +203,9 @@ export function HowToPlayModal() {
         <div className="mt-6 flex justify-end">
           <button
             onClick={() => setIsOpen(false)}
-            className="bg-primary text-primary-foreground font-display font-bold px-6 py-2.5 rounded-lg text-sm hover:opacity-90 transition-all glow-primary"
+            className="bg-primary text-primary-foreground font-display font-bold px-6 py-2.5 rounded-xl text-sm hover:opacity-90 transition-all glow-primary shadow-lg"
           >
-            UNDERSTOOD // PLAY NOW
+            GOT IT // LET&apos;S PLAY
           </button>
         </div>
       </div>

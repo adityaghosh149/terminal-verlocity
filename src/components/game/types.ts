@@ -18,6 +18,23 @@ export const getComboMultiplier = (c: number): number => {
   return 1;
 };
 
+/**
+ * WPM Speed Bonus Ladder:
+ * >= 30 WPM -> +20%
+ * >= 50 WPM -> +35%
+ * >= 70 WPM -> +50%
+ * >= 90 WPM -> +75%
+ * >= 110 WPM -> +100% (Double Points!)
+ */
+export const getSpeedBonusPercent = (wpm: number): number => {
+  if (wpm >= 110) return 100;
+  if (wpm >= 90) return 75;
+  if (wpm >= 70) return 50;
+  if (wpm >= 50) return 35;
+  if (wpm >= 30) return 20;
+  return 0;
+};
+
 // 4 distinct horizontal column lanes (percentages from left edge)
 export const LANES = [14, 38, 62, 86] as const;
 

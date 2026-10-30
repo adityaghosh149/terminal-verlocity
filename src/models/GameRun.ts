@@ -13,6 +13,11 @@ export interface IGameRun extends Document {
   endTime: Date;
   durationSeconds: number;
   finalScore: number;
+  actualTypingScore?: number;
+  multiplierScore?: number;
+  speedBonusScore?: number;
+  expectedScore?: number;
+  luckScore?: number;
   wpm: number;
   accuracy: number;
   packetsCaptured: number;
@@ -41,7 +46,7 @@ const GameRunSchema = new Schema<IGameRun>(
     username: {
       type: String,
       required: true,
-      default: "Operative",
+      default: "PLAYER",
       index: true,
     },
     userId: {
@@ -85,6 +90,26 @@ const GameRunSchema = new Schema<IGameRun>(
       type: Number,
       required: true,
       index: true,
+    },
+    actualTypingScore: {
+      type: Number,
+      default: 0,
+    },
+    multiplierScore: {
+      type: Number,
+      default: 0,
+    },
+    speedBonusScore: {
+      type: Number,
+      default: 0,
+    },
+    expectedScore: {
+      type: Number,
+      default: 0,
+    },
+    luckScore: {
+      type: Number,
+      default: 0,
     },
     wpm: {
       type: Number,
@@ -148,7 +173,29 @@ const GameRunSchema = new Schema<IGameRun>(
 // High-performance compound indexes for global and mode/difficulty leaderboards
 GameRunSchema.index({ status: 1, finalScore: -1 });
 GameRunSchema.index({ status: 1, mode: 1, difficulty: 1, finalScore: -1 });
+GameRunSchema.index({ status: 1, seed: 1, finalScore: -1 });
+GameRunSchema.index({ username: 1, status: 1, createdAt: -1 });
 GameRunSchema.index({ userId: 1, createdAt: -1 });
+
+function roundToTwo(num: number | undefined | null): number | undefined {
+  if (num === undefined || num === null || isNaN(num)) return undefined;
+  return Math.round((Number(num) + Number.EPSILON) * 100) / 100;
+}
+
+GameRunSchema.pre("save", function (next) {
+  if (typeof this.finalScore === "number") this.finalScore = roundToTwo(this.finalScore)!;
+  if (typeof this.actualTypingScore === "number") this.actualTypingScore = roundToTwo(this.actualTypingScore);
+  if (typeof this.multiplierScore === "number") this.multiplierScore = roundToTwo(this.multiplierScore);
+  if (typeof this.speedBonusScore === "number") this.speedBonusScore = roundToTwo(this.speedBonusScore);
+  if (typeof this.expectedScore === "number") this.expectedScore = roundToTwo(this.expectedScore);
+  if (typeof this.luckScore === "number") this.luckScore = roundToTwo(this.luckScore);
+  if (typeof this.wpm === "number") this.wpm = roundToTwo(this.wpm)!;
+  if (typeof this.accuracy === "number") this.accuracy = roundToTwo(this.accuracy)!;
+  if (typeof this.durationSeconds === "number") this.durationSeconds = roundToTwo(this.durationSeconds)!;
+  if (typeof this.totalExpectedValue === "number") this.totalExpectedValue = roundToTwo(this.totalExpectedValue)!;
+  if (typeof this.totalRealizedScore === "number") this.totalRealizedScore = roundToTwo(this.totalRealizedScore)!;
+  next();
+});
 
 export const GameRun: Model<IGameRun> =
   mongoose.models.GameRun || mongoose.model<IGameRun>("GameRun", GameRunSchema);

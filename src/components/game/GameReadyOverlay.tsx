@@ -1,7 +1,8 @@
 "use client";
 
 import React from "react";
-import { Zap, User } from "lucide-react";
+import { Zap, LogIn } from "lucide-react";
+import { useAuthStore } from "@/store/useAuthStore";
 import { useSessionStore } from "@/store/useSessionStore";
 
 interface GameReadyOverlayProps {
@@ -11,12 +12,15 @@ interface GameReadyOverlayProps {
 }
 
 export function GameReadyOverlay({ mode, difficulty, onStart }: GameReadyOverlayProps) {
-  const { username, openCallsignModal } = useSessionStore();
+  const { user, openAuthModal } = useAuthStore();
+  const { username } = useSessionStore();
+
+  const activeName = user?.username || username;
 
   const handleStart = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.currentTarget.blur();
-    if (!username) {
-      openCallsignModal();
+    if (!activeName) {
+      openAuthModal("login");
       return;
     }
     onStart();
@@ -35,34 +39,29 @@ export function GameReadyOverlay({ mode, difficulty, onStart }: GameReadyOverlay
         <span className="text-amber-400 font-bold">{difficulty}</span>
       </p>
 
-      {/* Username Badge */}
+      {/* Username / Account Status */}
       <div className="mt-4 flex items-center justify-center gap-2 font-mono">
-        <span className="text-[11px] text-muted-foreground uppercase">USERNAME:</span>
-        {username ? (
-          <button
-            type="button"
-            onClick={openCallsignModal}
-            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-primary/10 border border-primary/30 text-xs font-mono font-bold text-primary hover:bg-primary/20 transition-all"
-            title="Change username"
-          >
+        <span className="text-[11px] text-muted-foreground uppercase">PLAYER:</span>
+        {activeName ? (
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-primary/10 border border-primary/30 text-xs font-mono font-bold text-primary shadow-sm">
             <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-            @{username}
-            <span className="text-[10px] text-muted-foreground font-normal">(change)</span>
-          </button>
+            @{activeName}
+          </div>
         ) : (
           <button
             type="button"
-            onClick={openCallsignModal}
+            onClick={() => openAuthModal("login")}
             className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-secondary border border-primary/40 text-xs font-mono font-bold text-primary hover:bg-primary/10 transition-all glow-primary"
           >
-            <User className="h-3 w-3" />
-            SET USERNAME
+            <LogIn className="h-3 w-3" />
+            LOG IN / REGISTER
           </button>
         )}
       </div>
 
       <p className="mt-4 text-xs text-muted-foreground max-w-md mx-auto leading-relaxed">
-        Type the falling words before they hit the bottom. You have <span className="text-primary font-bold">5 Shields</span>. Missed words cost 1 Shield.
+        Type the falling words before they hit the bottom. You have{" "}
+        <span className="text-primary font-bold">5 Shields</span>. Missed words cost 1 Shield.
       </p>
 
       <div className="mt-6 flex items-center justify-center">
@@ -70,7 +69,7 @@ export function GameReadyOverlay({ mode, difficulty, onStart }: GameReadyOverlay
           onClick={handleStart}
           className="bg-primary text-primary-foreground font-display font-black px-8 py-3.5 rounded-lg text-sm hover:opacity-90 transition-all glow-primary tracking-widest"
         >
-          {username ? "START PLAYING [SPACE]" : "SET USERNAME & START"}
+          {activeName ? "START PLAYING [SPACE]" : "LOG IN / REGISTER & START"}
         </button>
       </div>
     </div>

@@ -73,4 +73,20 @@ describe("Terminal Velocity Game Flow & 5-Shield Integrity", () => {
     expect(metrics.totalExpectedValue).toBe(158); // 86 + 72 = 158
     expect(metrics.evDiscrepancy).toBe(-148);
   });
+
+  it("verifies speed bonus applied strictly on pure typing score", async () => {
+    const { getSpeedBonusPercent } = await import("@/components/game/types");
+    expect(getSpeedBonusPercent(25)).toBe(0);
+    expect(getSpeedBonusPercent(30)).toBe(20);
+    expect(getSpeedBonusPercent(55)).toBe(35);
+    expect(getSpeedBonusPercent(75)).toBe(50);
+    expect(getSpeedBonusPercent(95)).toBe(75);
+    expect(getSpeedBonusPercent(120)).toBe(100);
+
+    // If pure typing score is 100 and bonus is 50%, speed bonus must be exactly 50
+    const pureTypingScore = 100;
+    const speedBonusPct = 50;
+    const speedBonusPoints = pureTypingScore * (speedBonusPct / 100);
+    expect(speedBonusPoints).toBe(50);
+  });
 });

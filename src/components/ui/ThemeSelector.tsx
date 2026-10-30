@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Palette, Check, ChevronDown } from "lucide-react";
 import { useGameStore } from "@/store/useGameStore";
+import { useAuthStore } from "@/store/useAuthStore";
 import { Theme } from "@/types";
 
 interface ThemeOption {
@@ -65,6 +66,7 @@ export function ThemeSelector() {
                 type="button"
                 onClick={() => {
                   setTheme(t.id);
+                  useAuthStore.getState().updateUserSettings({ theme: t.id });
                   setIsOpen(false);
                 }}
                 className={`w-full flex items-center justify-between px-3 py-2 text-left transition-colors ${

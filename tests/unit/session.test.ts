@@ -13,12 +13,12 @@ describe("Ephemeral Session-Only Callsign Architecture", () => {
     expect(state.username).toBeNull();
   });
 
-  it("sets and sanitizes operative callsign during active session", () => {
-    useSessionStore.getState().setUsername("  shadow_runner  ");
-    expect(useSessionStore.getState().username).toBe("SHADOW_RUNNER");
+  it("sets and sanitizes user username during active session preserving upper/lower casing", () => {
+    useSessionStore.getState().setUsername("  Shadow_Runner  ");
+    expect(useSessionStore.getState().username).toBe("Shadow_Runner");
 
-    useSessionStore.getState().setUsername("VeryLongCallsignExceedingLimit");
-    expect(useSessionStore.getState().username).toBe("VERYLONGCALLSIG"); // Capped at 15 chars
+    useSessionStore.getState().setUsername("VeryLongUsernameExceedingLimit");
+    expect(useSessionStore.getState().username).toBe("VeryLongUsernameExce"); // Capped at 20 chars
   });
 
   it("resets callsign when session is cleared or simulated page refresh occurs", () => {
