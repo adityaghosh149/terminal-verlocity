@@ -74,10 +74,6 @@ export class ProbabilityEngine {
         words: EASY_WORDS,
         pMin: 0.10,
         pMax: 0.25,
-        rewardMin: 50,
-        rewardMax: 80,
-        penaltyRatioMin: 0.3,
-        penaltyRatioMax: 0.45,
         durationSeconds: 11,
         speed: 48,
       },
@@ -85,10 +81,6 @@ export class ProbabilityEngine {
         words: MEDIUM_WORDS,
         pMin: 0.12,
         pMax: 0.45,
-        rewardMin: 90,
-        rewardMax: 160,
-        penaltyRatioMin: 0.4,
-        penaltyRatioMax: 0.65,
         durationSeconds: 8.5,
         speed: 68,
       },
@@ -96,10 +88,6 @@ export class ProbabilityEngine {
         words: HARD_WORDS,
         pMin: 0.15,
         pMax: 0.65,
-        rewardMin: 160,
-        rewardMax: 260,
-        penaltyRatioMin: 0.5,
-        penaltyRatioMax: 0.85,
         durationSeconds: 6.5,
         speed: 92,
       },
@@ -121,37 +109,31 @@ export class ProbabilityEngine {
     const wordsPool = availableWords.length > 0 ? availableWords : candidatePool;
     const code = rng.pick(wordsPool);
 
+    // Advertised Reward is strictly the Pure Typing Score (10 * character length)
+    // Non-corrupted packets award positive pure score (+reward)
+    // Corrupted packets penalize with negative score (-corruptionPenalty)
+    const pureTypingScore = code.length * 10;
+    const reward = pureTypingScore;
+    const corruptionPenalty = pureTypingScore;
+
     let corruptionProbability: number;
-    let reward: number;
-    let corruptionPenalty: number;
 
     if (forcedTier === "safe") {
       corruptionProbability = Number(rng.nextFloat(0.10, 0.20).toFixed(2));
-      reward = rng.nextInt(config.rewardMin, Math.round(config.rewardMin + (config.rewardMax - config.rewardMin) * 0.35));
-      corruptionPenalty = Math.round(reward * 0.35);
     } else if (forcedTier === "caution") {
       corruptionProbability = Number(rng.nextFloat(0.25, 0.40).toFixed(2));
-      reward = rng.nextInt(Math.round(config.rewardMin + (config.rewardMax - config.rewardMin) * 0.35), Math.round(config.rewardMin + (config.rewardMax - config.rewardMin) * 0.75));
-      corruptionPenalty = Math.round(reward * 0.50);
     } else if (forcedTier === "danger") {
       corruptionProbability = Number(rng.nextFloat(0.50, 0.65).toFixed(2));
-      reward = rng.nextInt(Math.round(config.rewardMin + (config.rewardMax - config.rewardMin) * 0.75), config.rewardMax);
-      corruptionPenalty = Math.round(reward * 0.70);
     } else {
       // Natural distribution: 55% Safe, 35% Caution, 10% Danger
       const roll = rng.next();
       if (roll < 0.55) {
         corruptionProbability = Number(rng.nextFloat(config.pMin, Math.min(0.22, config.pMax)).toFixed(2));
-        reward = rng.nextInt(config.rewardMin, Math.round(config.rewardMin + (config.rewardMax - config.rewardMin) * 0.35));
       } else if (roll < 0.90) {
         corruptionProbability = Number(rng.nextFloat(0.25, Math.min(0.42, config.pMax)).toFixed(2));
-        reward = rng.nextInt(Math.round(config.rewardMin + (config.rewardMax - config.rewardMin) * 0.35), Math.round(config.rewardMin + (config.rewardMax - config.rewardMin) * 0.75));
       } else {
         corruptionProbability = Number(rng.nextFloat(0.50, config.pMax).toFixed(2));
-        reward = rng.nextInt(Math.round(config.rewardMin + (config.rewardMax - config.rewardMin) * 0.75), config.rewardMax);
       }
-      const penaltyRatio = rng.nextFloat(config.penaltyRatioMin, config.penaltyRatioMax);
-      corruptionPenalty = Math.round(reward * penaltyRatio);
     }
 
     const interceptionCost = 0;

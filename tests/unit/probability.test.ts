@@ -131,4 +131,33 @@ describe("ProbabilityEngine", () => {
     expect(new Set(MEDIUM_WORDS).size).toBe(MEDIUM_WORDS.length);
     expect(new Set(HARD_WORDS).size).toBe(HARD_WORDS.length);
   });
+
+  it("sets advertised reward strictly to pure typing score and penalty to pure typing score", () => {
+    const rng = new SeededRandom("test-reward-pure-typing");
+
+    // Easy (4-letter words): reward must be exactly 40
+    const easyPkt = ProbabilityEngine.generatePacket("p1", "easy", rng, 1000);
+    expect(easyPkt.code.length).toBe(4);
+    expect(easyPkt.reward).toBe(40);
+    expect(easyPkt.corruptionPenalty).toBe(40);
+
+    // Medium (5-letter words): reward must be exactly 50
+    const medPkt = ProbabilityEngine.generatePacket("p2", "medium", rng, 1000);
+    expect(medPkt.code.length).toBe(5);
+    expect(medPkt.reward).toBe(50);
+    expect(medPkt.corruptionPenalty).toBe(50);
+
+    // Hard (6-letter words): reward must be exactly 60
+    const hardPkt = ProbabilityEngine.generatePacket("p3", "hard", rng, 1000);
+    expect(hardPkt.code.length).toBe(6);
+    expect(hardPkt.reward).toBe(60);
+    expect(hardPkt.corruptionPenalty).toBe(60);
+
+    // Non-corrupted packet gives positive pure score (+reward)
+    // Corrupted packet gives negative pure score (-corruptionPenalty)
+    const cleanDelta = easyPkt.reward;
+    const corruptedDelta = -easyPkt.corruptionPenalty;
+    expect(cleanDelta).toBe(40);
+    expect(corruptedDelta).toBe(-40);
+  });
 });

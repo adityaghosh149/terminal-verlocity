@@ -8,19 +8,20 @@ This document details the mathematical modeling, data science methodology, and s
 
 ### 1.1 Authoritative Mathematical Formulation
 Every falling data packet possesses four fundamental attributes:
-1. **Advertised Reward ($R$):** The gross point yield credited upon clean interception.
-2. **Corruption Probability ($p \in [0.05, 0.85]$):** The objective probability that the packet contains a malicious payload.
+1. **Advertised Reward ($R$):** Defined strictly as the **Pure Typing Score** ($10 \times \text{word length}$). Intercepting clean awards $+R$ points.
+2. **Corruption Probability ($p \in [0.10, 0.65]$):** The objective probability that the packet contains a corrupted payload.
 3. **Success Probability ($1 - p$):** The objective probability that the packet is clean.
-4. **Corruption Penalty ($C$):** The point deduction and shield damage incurred if intercepted while corrupted.
+4. **Corruption Penalty ($C$):** Defined as the Pure Typing Score ($C = R$). Intercepting while corrupted deducts $-C$ points and resets streaks.
 5. **Interception Cost ($K$):** Upfront execution cost (defaults to 0).
 
 The **Expected Value ($EV$)** represents the mathematical expectation of point return over repeated trials:
 
-$$\mathbb{E}[V] = (1 - p)R - pC - K$$
+$$\mathbb{E}[V] = (1 - p)R - pC = (1 - 2p)R$$
 
 #### Example:
-A packet offers $R = 100$ points with a corruption risk of $p = 0.20$ (20%) and a corruption penalty of $C = 60$ points:
-$$\mathbb{E}[V] = (1 - 0.20)(100) - (0.20)(60) = 80 - 12 = 68\text{ points}$$
+A 5-letter word (`CYBER`) has $R = 50\text{ pts}$ and $C = 50\text{ pts}$. With a corruption risk of $p = 0.20$ (20%):
+$$\mathbb{E}[V] = (1 - 2(0.20)) \times 50 = (0.60) \times 50 = +30\text{ points}$$
+If corrupted, the player receives $-50\text{ points}$. If clean, the player receives $+50\text{ points}$ (plus streak multiplier and speed bonus).
 
 ---
 

@@ -32,10 +32,16 @@ Every completed run calculates three distinct score components that sum **exactl
 
 $$\text{Total Score} = \text{Pure Typing Score} + \text{Multiplier Score} + \text{Speed Bonus Score}$$
 
-### 1. Pure Typing Score
-Base points earned solely from typing correct characters:
-$$\text{Pure Typing Score} = 10 \times \text{Character Length of Word}$$
-* *Example:* Intercepting the 5-letter word `CYBER` awards $10 \times 5 = 50$ pure typing points.
+### 1. Advertised Reward & Pure Typing Score
+The **Advertised Reward** displayed on every packet is strictly its **Pure Typing Score**:
+$$\text{Advertised Reward} = \text{Pure Typing Score} = 10 \times \text{Character Length of Word}$$
+* 🟢 **4-Letter Word (Easy):** Advertised as **`+40 PTS`**
+* 🟡 **5-Letter Word (Medium):** Advertised as **`+50 PTS`**
+* 🔴 **6-Letter Word (Hard):** Advertised as **`+60 PTS`**
+
+**Interception Outcome:**
+* **Non-Corrupted (Clean) Packets:** You receive **positive** points ($+\text{Pure Typing Score}$), plus your clean streak multiplier and typing speed bonus.
+* **Corrupted Packets:** You receive **negative** points ($-\text{Pure Typing Score}$), your clean streak multiplier resets to zero, and danger words risk losing 1 shield.
 
 ### 2. Clean Streak Multipliers
 Typing clean words consecutively without errors unlocks massive point multipliers:
